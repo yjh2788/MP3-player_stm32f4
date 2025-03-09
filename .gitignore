@@ -1,0 +1,18 @@
+# Build output files
+Debug/
+Release/
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.d
+*.axf
+
+# CubeIDE specific files
+.vscode/
+.settings/
+.project
+.cproject
+mx/

@@ -11,6 +11,8 @@
 #include "main.h"
 #include "TFT_LCD.h"
 
+#define USE_FATFS_LIB
+
 #define _BV(n) (1 << n)
 // 비트 클리어
 #define cbi(reg, bit) reg &= ~(_BV(bit))

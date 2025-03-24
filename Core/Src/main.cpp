@@ -123,9 +123,10 @@ static void MX_USB_OTG_FS_PCD_Init(void);
 void StartControlTask(void *argument);
 void StartAudioTask(void *argument);
 
+void Home_page();
 static void Main_page();
 static void init_page();
-static void MP3_Play(int f_no);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -149,15 +150,16 @@ int numofFile = 0;
 int music_no = 0;
 uint8_t volume=200;
 
-
-bool stop_flag = 0;
-bool volume_flag = 0;
-bool change_flag = 0;
-bool home_flag = 0;
-bool play_again = 0;
-bool p_flag = 0;
-bool up = 0, down = 0; //,select=0;
-bool play_state = 0;
+#define SIZE 100
+uint16_t play_emoji[SIZE * SIZE];
+//bool stop_flag = 0;
+//bool volume_flag = 0;
+//bool change_flag = 0;
+//bool home_flag = 0;
+//bool play_again = 0;
+//bool p_flag = 0;
+//bool up = 0, down = 0; //,select=0;
+//bool play_state = 0;
 
 
 extern FATFS fs;           // File system object
@@ -201,8 +203,30 @@ int main(void) {
 	MX_SPI2_Init();
 	MX_USART1_UART_Init();
 	//MX_USB_OTG_FS_PCD_Init();
-	//MX_FATFS_Init();
+	MX_FATFS_Init();
 	std::cout.rdbuf(&uart_redirector);
+	for (int i = 0; i < SIZE * SIZE; i++) {
+	        play_emoji[i] = olive;//0x2104;
+	}
+
+	int x_left = SIZE / 4;          // 왼쪽 꼭짓점 x (SIZE의 1/4)
+	int x_right = SIZE * 3 / 4;     // 오른쪽 꼭짓점 x (SIZE의 3/4)
+	int y_center = SIZE / 2;        // 중앙 y (SIZE의 1/2)
+	int y_top = SIZE / 4;           // 위쪽 꼭짓점 y (SIZE의 1/4)
+	int y_bottom = SIZE * 3 / 4;    // 아래쪽 꼭짓점 y (SIZE의 3/4)
+
+	    // 삼각형 내부 채우기
+	for (int x = x_left; x <= x_right; x++) {
+	        // x가 x_left에서 x_right로 갈수록 y 범위 계산
+		int y_upper = y_center - (x - x_left) * (y_center - y_top) / (x_right - x_left); // 상단 경계
+		int y_lower = y_center + (x - x_left) * (y_bottom - y_center) / (x_right - x_left); // 하단 경계
+
+		for (int y = y_upper; y <= y_lower; y++) {
+			if (y >= 0 && y < SIZE) { // 배열 범위 초과 방지
+				play_emoji[y * SIZE + x] = 0xFFFF; // 흰색으로 채움
+	        }
+	    }
+	}
 	/* USER CODE BEGIN 2 */
 	//init_page();
 	//cout<<"music start\r"<<endl;
@@ -268,13 +292,12 @@ int main(void) {
 
 static void init_page() {
 
-	//lcd.init();  //8bit
-	lcd.init(&hspi2);
-	lcd.color_screen(Background_gray);
+	lcd.init();  //8bit
+	//lcd.init(&hspi2);
+	lcd.color_screen_8(Background_gray);
 
 	//cout << "lcd init\r" << endl;
 	//printf("finished/n/r");
-	vs.vs1003b_init(&hspi2);
 	HAL_GPIO_WritePin(TFT_CS_PORT, TFT_CS, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(vs1003_PORT, VS1003B_XCS, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(vs1003_PORT, VS1003B_XDCS, GPIO_PIN_SET);
@@ -288,6 +311,7 @@ static void init_page() {
 		std::cout << "sd card success\r" << std::endl;
 
 	sd.FAT_Init();
+	vs.vs1003b_init(&hspi2);
 	sd.SPI_speed_11MHz();
 	numofFile = sd.fatGetDirEntry();
 	cout << "num of File=" << std::dec << numofFile << "\r" << endl;
@@ -300,7 +324,8 @@ static void init_page() {
 	lcd.string(120, 340, Cyan, Black, buffer);
 
 
-	/*if (f_mount(&fs, "", 1) == FR_OK) {
+	if (f_mount(&fs, "", 1) == FR_OK)
+	{
 		std::cout << "Filesystem mounted!\r" << std::endl;
 
 		// MP3 파일 검색
@@ -314,22 +339,35 @@ static void init_page() {
 			std::cout << i + 1 << ": " << fileNames[i] << "\r" << std::endl;
 		}
 
-//		// 파일 열고 데이터 전송
-//		for (uint16_t i = 0; i < fileCount; i++) {
-//			char filePath[64];
-//			snprintf(filePath, sizeof(filePath), "/%s", fileNames[i]);
-//			readAndSendFile(filePath);
-//		}
-	} else {
-		std::cout << "Filesystem mount failed!\r" << std::endl;
-	}*/
+	//		// 파일 열고 데이터 전송
+	//		for (uint16_t i = 0; i < fileCount; i++) {
+	//			char filePath[64];
+	//			snprintf(filePath, sizeof(filePath), "/%s", fileNames[i]);
+	//			readAndSendFile(filePath);
+	//		}
+		} else {
+			std::cout << "Filesystem mount failed!\r" << std::endl;
+		}
+
+
 }
 
 static void Main_page() {
-	lcd.color_screen(Background_gray);
+	lcd.color_screen_8(Background_gray);
+	lcd.frame();
+	lcd.Rectangle(Rect(0, 0, TFTWIDTH-1, 50), 2, White);
+	//lcd.Circle(160,160,10,White);
+	lcd.string_size(20, 20, White, button_gray, "Play", 2, 2);
+	lcd.string_size(10, 70, White, Background_gray, "Playing", 2, 2);
+	lcd.string_size(10, 150, White, Background_gray, "Now:", 2, 2);
+	lcd.bitmap(play_emoji,110,370,100,100);
+}
 
-	lcd.Rectangle(0, 0, TFTWIDTH, 50, 2, button_gray);
-	lcd.string_size(20, 20, White, button_gray, "play", 2, 2);
+void Home_page()
+{
+	lcd.color_screen_8(Background_gray);
+	lcd.string_size(50, 220, Green, Black, "Youn's LAB MP3 Player",1,1);
+	lcd.string_size(100, 260, Green, Black, "START",1,1);
 }
 
 /**
@@ -354,7 +392,7 @@ void SystemClock_Config(void) {
 	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
 	RCC_OscInitStruct.PLL.PLLM = 8;
 	RCC_OscInitStruct.PLL.PLLN = 360;
-	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
 	RCC_OscInitStruct.PLL.PLLQ = 2;
 	RCC_OscInitStruct.PLL.PLLR = 2;
 	if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
@@ -372,7 +410,7 @@ void SystemClock_Config(void) {
 	RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
 			| RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
 	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV2;
 	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
 	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
@@ -698,24 +736,25 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	if (GPIO_Pin == BOTTON_VOL_P) { // 버튼 핀 확인
 		event = EVENT_VOL_P;
 	}
-	if (GPIO_Pin == BOTTON_VOL_M) { // 버튼 핀 확인
+	else if (GPIO_Pin == BOTTON_VOL_M) { // 버튼 핀 확인
 		event = EVENT_VOL_M;
 	}
-	if (GPIO_Pin == BOTTON_REPEAT) { // 버튼 핀 확인
+	else if (GPIO_Pin == BOTTON_REPEAT) { // 버튼 핀 확인
 		event = EVENT_REPEAT;
 	}
-	if (GPIO_Pin == BOTTON_HOME) { // 버튼 핀 확인
+	else if (GPIO_Pin == BOTTON_HOME) { // 버튼 핀 확인
 		event = EVENT_HOME;
 	}
-	if (GPIO_Pin == BOTTON_PAUSE) { // 버튼 핀 확인
+	else if (GPIO_Pin == BOTTON_PAUSE) { // 버튼 핀 확인
 		event = EVENT_PAUSE;
 	}
-	if (GPIO_Pin == BOTTON_NEXT) { // 버튼 핀 확인
+	else if (GPIO_Pin == BOTTON_NEXT) { // 버튼 핀 확인
 		event = EVENT_NEXT;
 	}
-	if (GPIO_Pin == BOTTON_PREV) { // 버튼 핀 확인
+	else if (GPIO_Pin == BOTTON_PREV) { // 버튼 핀 확인
 		event = EVENT_PREV;
 	}
+
 	if(event!=0)
 	{
 		xTaskNotifyFromISR((TaskHandle_t)ControlTaskHandle, event, eSetValueWithOverwrite, &xHigherPriorityTaskWoken);
@@ -761,11 +800,12 @@ void StartControlTask(void *argument) {
 
 				else if(current_page == HOME_PAGE)
 				{
-					if (ulNotificationValue == EVENT_HOME)
+					if (ulNotificationValue == EVENT_PAUSE)
 					{
 						current_page = PLAY_PAGE;
 						is_playing = true;
 						reset_track = true;
+						Main_page();
 					}
 				}
 				else if(current_page == PLAY_PAGE)
@@ -779,10 +819,14 @@ void StartControlTask(void *argument) {
 						current_page = HOME_PAGE;
 						is_playing = false;
 						reset_track = true;
+						Home_page();
 					}
 					if (ulNotificationValue == EVENT_PAUSE)
 					{ // pause/resume
 						is_playing = !is_playing;
+
+						if(is_playing) lcd.string_size(10, 70, White, Background_gray, "Playing", 2, 2);
+						else lcd.string_size(10, 70, White, Background_gray, "Pause  ", 2, 2);
 						reset_track = false;
 					}
 					else if (ulNotificationValue == EVENT_NEXT)
@@ -816,28 +860,39 @@ void StartAudioTask(void *argument) {
 	u_long rd_sec;
 	int i, n;
 	u_long k = 0, kd;
+
 	init_page();
 	osSemaphoreAcquire(stateSemaphore, osWaitForever);
 	init=1;
 	osSemaphoreRelease(stateSemaphore);
 	vs.vs1003b_set_volume(200, 200);
+	sd.SPI_speed_6MHz();
+	uint8_t button_event;
+	bool next = 0;
+	bool prev = 0;
+	bool vol_change=0;
+	bool playing=0;
+	int music;
+	bool reset;
+	bool repeat;
+	uint8_t vol;
+	UINT bytesRead;       // 읽은 바이트 수
+	uint8_t buf[512];  // 데이터 버퍼 (섹터 크기 맞춤)
 
 	/* Infinite loop */
 	for (;;) {
-		//std::cout<<"start\r"<<endl;
+
 		osSemaphoreAcquire(stateSemaphore, osWaitForever);
-		bool playing = is_playing;
-		int music = music_no;
-		bool reset = reset_track;
-		bool repeat = botton_repeat;
-		uint8_t vol= volume;
+		playing = is_playing;
+		music = music_no;
+		reset = reset_track;
+		repeat = botton_repeat;
+		vol= volume;
 		osSemaphoreRelease(stateSemaphore);
 
-
-		uint8_t button_event;
-		bool next = 0;
-		bool prev = 0;
-		bool vol_change=0;
+		next = 0;
+		prev = 0;
+		vol_change=0;
 		if (osMessageQueueGet(buttonQueue, &button_event, NULL, 0)
 				== osOK) {
 			if (button_event == EVENT_NEXT)
@@ -858,16 +913,29 @@ void StartAudioTask(void *argument) {
 			osSemaphoreAcquire(stateSemaphore, osWaitForever);
 			reset_track = false; // 초기화 후 리셋
 			osSemaphoreRelease(stateSemaphore);
+#ifdef USE_FATFS_LIB
+			c_clust=1;
+			//f_close(&fil);
+			if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
+				c_clust=0;
+				osSemaphoreAcquire(stateSemaphore, osWaitForever);
+				music_no = music+1;
+				osSemaphoreRelease(stateSemaphore);
+				std::cout<<"file open failed: \r\n";
+			    //f_mount(NULL, "", 0); // 마운트 해제
+			    //return;
+			}
+
+			lcd.string_size(20, 170, White, Background_gray, fileNames[music], 1, 1);
+#endif
 		}
-		std::cout<<"playing:"<<playing<<", reset:"<<reset<<", music_no:"<<music<<", clust:"<<c_clust<<", k:"<<k<<", kd:"<<kd<<" vol:"<<(int)vol<<"\r"<<endl;
+		//std::cout<<"playing:"<<playing<<", reset:"<<reset<<", music_no:"<<music<<", clust:"<<c_clust<<", k:"<<k<<", kd:"<<kd<<" vol:"<<(int)vol<<"\r"<<endl;
 
 		if (c_clust == 0 || next || prev) //end of music
-				{
+		{
 			if (prev) {
-				if (music == 0)
-					music = numofFile - 1;
-				else
-					music--;
+				if (music == 0) music = numofFile - 1;
+				else music--;
 				osSemaphoreAcquire(stateSemaphore, osWaitForever);
 				botton_prev = 0;
 				osSemaphoreRelease(stateSemaphore);
@@ -876,8 +944,8 @@ void StartAudioTask(void *argument) {
 				osSemaphoreAcquire(stateSemaphore, osWaitForever);
 				botton_next = 0;
 				osSemaphoreRelease(stateSemaphore);
-			} else
-				music = repeat ? music : music + 1;
+			} else	music = repeat ? music : music + 1;
+
 			if (music >= numofFile)
 				music = 0;
 			osSemaphoreAcquire(stateSemaphore, osWaitForever);
@@ -886,9 +954,96 @@ void StartAudioTask(void *argument) {
 			k = 0;
 			kd = sd.file_len[music];                            // 파일 길이 섹터수
 			c_clust = sd.fileStartClust[music];               // f_no 파일 시작 클러스터
+#ifdef USE_FATFS_LIB
+			c_clust=1;
+			f_close(&fil);
+			if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
+				c_clust=0;
+				osSemaphoreAcquire(stateSemaphore, osWaitForever);
+				music_no = music+1;
+				osSemaphoreRelease(stateSemaphore);
+				std::cout<<"file open failed: \r\n";
+			    //f_mount(NULL, "", 0); // 마운트 해제
+			    //return;
+			}
+			lcd.string_size(20, 170, White, Background_gray, fileNames[music], 1, 1);
+#endif
 		}
 
 		if (playing) {
+
+#ifdef USE_FATFS_LIB
+
+			if(f_eof(&fil))//end of file
+			{
+				f_close(&fil);
+				f_mount(NULL,"",0);
+				f_mount(&fs,"",1);
+				music = repeat ? music : music + 1;
+				if (music >= numofFile)	music = 0;
+				osSemaphoreAcquire(stateSemaphore, osWaitForever);
+				music_no = music;
+				osSemaphoreRelease(stateSemaphore);
+
+				if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
+					c_clust=0;
+					osSemaphoreAcquire(stateSemaphore, osWaitForever);
+					music_no = music+1;
+					osSemaphoreRelease(stateSemaphore);
+					std::cout<<"file open failed: \r\n";
+				}
+
+				lcd.string_size(20, 170, White, Background_gray, fileNames[music], 1, 1);
+
+			}
+			else
+			{
+				cout<<"f_tell: "<<f_tell(&fil)<<", f_size: "<<f_size(&fil)<<"\r\n";
+				// read file
+				if (f_read(&fil, buf, sizeof(buf), &bytesRead) != FR_OK) {
+					std::cout<<"read failed:"<< res<<'\r'<<endl;
+					DWORD pos=f_tell(&fil);
+					f_close(&fil);
+					f_mount(NULL,"",0);
+					f_mount(&fs,"",1);
+					if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
+						std::cout<<"file open failed: \r\n"; }
+					f_lseek(&fil,pos);
+					f_read(&fil, buf, sizeof(buf), &bytesRead);
+				}
+
+
+				if(bytesRead > 0)// if something is read
+				{
+					//cout<<"sizeof buf:"<<sizeof(buf)<<", bytesRead: "<<bytesRead<<"\r\n";
+					HAL_GPIO_WritePin(SD_PORT, SD_CS, GPIO_PIN_SET);
+					// 읽은 데이터 처리 (예: 출력 또는 오디오 재생)
+					for (UINT i = 0; i < bytesRead; i++) {
+						while ((vs.vs1003b_is_busy()));
+						HAL_GPIO_WritePin(vs1003_PORT, VS1003B_XDCS, GPIO_PIN_RESET);
+						vs.vs1003b_spi_send(buf[i]);		// VS1033 칩으로 MP3 데이터 전송
+						HAL_GPIO_WritePin(vs1003_PORT, VS1003B_XDCS, GPIO_PIN_SET);
+					}
+					if(vol_change) {
+						vs.vs1003b_set_volume(vol,vol);
+						vol_change=0;
+					}
+
+					HAL_GPIO_WritePin(SD_PORT, SD_CS, GPIO_PIN_RESET);
+
+				}
+				else// nothing read, mount again
+				{
+					DWORD pos=f_tell(&fil);
+					f_close(&fil);
+					f_mount(NULL,"",0);
+					f_mount(&fs,"",1);
+					if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
+						std::cout<<"file open failed: \r\n"; }
+					f_lseek(&fil,pos);
+				}
+			}
+#else
 			rd_sec = sd.fatClustToSect(c_clust);    // 현재 클러스터를 섹터로 변환
 			for (n = 0; n < sd.SecPerClus; n++)    // 클러스터당 섹터 수만큼 읽기
 			{
@@ -913,9 +1068,12 @@ void StartAudioTask(void *argument) {
 				if (++k >= kd)
 					break;
 			}
+			//u_long percent=(k/kd)*300;
+			//lcd.Slider(0,280,percent,Background_gray,Yellow);
 			c_clust = sd.FAT_NextCluster(c_clust);    // 다음 cluster계산
+#endif
 		}
-		osDelay(1);
+		//osDelay(1);
 	}
 /* USER CODE END StartAudioTask */
 }

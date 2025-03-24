@@ -346,7 +346,7 @@ void TFT_LCD::init() /* initialize TFT-LCD with HX8347 */
 {
 	RD_HIGH();
 	reg_init();
-	setRotation(0);
+	setRotation(2);
 }
 //
 //void TFT_LCD::imshow(Array<uint8_t> arr, uint8_t res)
@@ -459,18 +459,50 @@ void TFT_LCD::imshow(uint8_t *arr, int x, int y, int width, int height) {
 	}
 	cs_deselect();
 }
+void TFT_LCD::bitmap(uint16_t * arr, int x, int y, int width, int height)
+{
+	int total = width * height;
+	setAddrWindow(x, y, width, height);
+	sendcommand(HX8357_RAMWR);
+	cs_select();
+	DC_DATA();
+	for (int j = total-1; j >= 0; j--) {
+
+		write16(arr[j]);
+
+	}
+	cs_deselect();
+}
 
 void TFT_LCD::color_screen_8(uint16_t color) /* TFT-LCD full screen color */
 {
-	//GRAM_address(479, 319);
-	GRAM_address(TFTWIDTH, TFTHEIGHT);
 	cs_select();
+
+	DC_COMMAND();
+	write8(HX8357_CASET);
 	DC_DATA();
-	for (int j = 0; j < TFTHEIGHT; j++) {
-		for (int i = 0; i < TFTWIDTH; i++) {
+	write16(0x0000);
+	DC_DATA();
+	write16(TFTWIDTH-1);
+	DC_COMMAND();
+	write8(HX8357_PASET);
+	DC_DATA();
+	write16(0x0000);
+	DC_DATA();
+	write16(TFTHEIGHT-1);
+	DC_COMMAND();
+	write8(HX8357_RAMWR);
+
+//	sendWord(HX8357_CASET, 0x0000); // xPos = 0~239
+//	sendDataWord(TFTWIDTH-1);
+//	sendWord(HX8357_PASET, 0x0000); // yPos = 0~319
+//	sendDataWord(TFTHEIGHT-1);
+//	sendcommand(HX8357_RAMWR);
+//	cs_select();
+	DC_DATA();
+	for (uint32_t i = 0; i < 320 * 480; i++) {
 			write8(color >> 8);
 			write8(color & 0xff);
-		}
 	}
 	cs_deselect();
 }
@@ -593,12 +625,22 @@ void TFT_LCD::setAddrWindow(uint16_t x1, uint16_t y1, uint16_t w, uint16_t h) {
 void TFT_LCD::GRAM_address(uint16_t xPos, uint16_t yPos) /* set GRAM address of TFT-LCD */
 {
 	// if((xPos > 239) || (yPos > 319)) return;
-	sendWord(HX8357_CASET, 0x0000); // xPos = 0~239
-	sendDataWord(xPos);
-	sendWord(HX8357_PASET, 0x0000); // yPos = 0~319
-	sendDataWord(yPos);
-	sendcommand(HX8357_RAMWR);
-	// cs_deselect();
+	cs_select();
+	DC_COMMAND();
+	write8(HX8357_CASET);
+	DC_DATA();
+	write16(xPos);
+	DC_DATA();
+	write16(xPos + 1);
+	DC_COMMAND();
+	write8(HX8357_PASET);
+	DC_DATA();
+	write16(yPos);
+	DC_DATA();
+	write16(yPos + 1);
+	DC_COMMAND();
+	write8(HX8357_RAMWR);
+	cs_deselect();
 }
 
 void TFT_LCD::clear_screen(void) /* TFT-LCD clear screen with black color */
@@ -614,22 +656,44 @@ void TFT_LCD::screen_mode(uint8_t mode) {
 }
 
 void TFT_LCD::frame() {
-	Rectangle(0, 0, TFTWIDTH - 1, TFTHEIGHT - 1, White);
+	Rectangle(0, 0, TFTWIDTH - 1, TFTHEIGHT - 1,2, White);
 }
 
 void TFT_LCD::TFT_pixel(uint16_t xPos, uint16_t yPos, uint16_t color) /* write a pixel */
 {
-	//if ((x < 0) || (y < 0) || (x >= TFTWIDTH) || (y >= TFTHEIGHT))
-	sendcommand(HX8357_CASET); // Column address set
-	sendDataWord(xPos);
-	sendDataWord(xPos + 1);
-	sendcommand(HX8357_PASET); // Row address set
-	sendDataWord(yPos);
-	sendDataWord(yPos + 1);
-	sendcommand(HX8357_RAMWR); // Write to RAM
-	for (int i = 0; i <= 4; i++)
-		sendDataWord(color);
-	//cs_deselect();
+	if ((xPos < 0) || (yPos < 0) || (xPos >= TFTWIDTH) || (yPos >= TFTHEIGHT))
+		return;
+	cs_select();
+	DC_COMMAND();
+	write8(HX8357_CASET);
+	DC_DATA();
+	write16(xPos);
+	DC_DATA();
+	write16(xPos + 1);
+	DC_COMMAND();
+	write8(HX8357_PASET);
+	DC_DATA();
+	write16(yPos);
+	DC_DATA();
+	write16(yPos + 1);
+	DC_COMMAND();
+	write8(HX8357_RAMWR);
+//	sendcommand(HX8357_CASET); // Column address set
+//	sendDataWord(xPos);
+//	sendDataWord(xPos + 1);
+//	sendcommand(HX8357_PASET); // Row address set
+//	sendDataWord(yPos);
+//	sendDataWord(yPos + 1);
+//	sendcommand(HX8357_RAMWR); // Write to RAM
+
+	DC_DATA();
+	for (int i = 0; i < 1; i++)
+	{
+		//sendDataWord(color);
+		write16(color);
+	}
+
+	cs_deselect();
 }
 
 void TFT_LCD::xy(uint8_t xChar, uint8_t yChar) /* set character position (x,y) */
@@ -673,7 +737,7 @@ void TFT_LCD::drawstring(uint16_t x, uint16_t y, char *str, uint16_t text_color,
 		str++;
 		xpos = xcharacter + count * (width + 3);
 		ypos = ycharacter + 16 * (cnty);
-		if (xpos > 320) {
+		if (xpos > CHAR_RETURN_LEN) {
 			cnty++;
 			xcharacter = 0;
 			count = 0;
@@ -1298,11 +1362,11 @@ void TFT_LCD::Line_width(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
 			if (x2 + width >= TFTWIDTH) {
 				sendcommand(HX8357_CASET); // Column address set
 				sendDataWord(TFTWIDTH - width);
-				sendDataWord(TFTWIDTH);
+				sendDataWord(TFTWIDTH-1);
 			} else {
 				sendcommand(HX8357_CASET); // Column address set
 				sendDataWord(x1);
-				sendDataWord(x2 + width);
+				sendDataWord(x2 + width-1);
 			}
 			sendcommand(HX8357_PASET); // Row address set
 			sendDataWord(y1);
@@ -1310,7 +1374,7 @@ void TFT_LCD::Line_width(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
 			sendcommand(HX8357_RAMWR); // Write to RAM
 			for (int i = 0; i < liny; i++)
 				sendDataWord(color);
-			cs_deselect();
+//			cs_deselect();
 		} else {
 			if (y1 < y2) //              x is function
 				for (y = y1; y <= y2; y++) {
@@ -1342,7 +1406,7 @@ void TFT_LCD::Line_width(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
 			sendcommand(HX8357_RAMWR); // Write to RAM
 			for (int i = 0; i < linx; i++)
 				sendDataWord(color);
-			cs_deselect();
+			//cs_deselect();
 		} else {
 			if (x1 < x2) //              y is function
 				for (x = x1; x <= x2; x++) {
@@ -1362,7 +1426,7 @@ void TFT_LCD::Line_width(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
 }
 void TFT_LCD::Rectangle(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
 		uint16_t color) /* draw a rectangle */
-		{
+{
 	Line(x1, y1, x1, y2, color); // horizontal line
 	Line(x2, y1, x2, y2, color);
 	Line(x1, y1, x2, y1, color); // vertical line
@@ -1370,16 +1434,39 @@ void TFT_LCD::Rectangle(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
 }
 void TFT_LCD::Rectangle(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
 		int16_t width, uint16_t color) /* draw a rectangle */
-		{
+{
+	Line_width(x1, y1, x1, y2, width, color); // horizontal line
+	Line_width(x2, y1, x2, y2, width, color);
+	Line_width(x1, y1, x2, y1, width, color); // vertical line
+	Line_width(x1, y2, x2, y2, width, color);
+}
+void TFT_LCD::Rectangle_rect(int16_t x, int16_t y, int16_t width, int16_t height,
+		int16_t l_width, uint16_t color) /* draw a rectangle */
+{
+	int16_t x1 = x;
+	int16_t x2 = x+width;
+	int16_t y1 = y;
+	int16_t y2 = y+height;
+	Line_width(x1, y1, x1, y2, l_width, color); // horizontal line
+	Line_width(x2, y1, x2, y2, l_width, color);
+	Line_width(x1, y1, x2, y1, l_width, color); // vertical line
+	Line_width(x1, y2, x2, y2, l_width, color);
+}
+
+void TFT_LCD::Rectangle(Rect rect, int16_t width, uint16_t color) /* draw a rectangle */
+{
+	int16_t x1 = rect.x;
+	int16_t x2 = rect.x+rect.width;
+	int16_t y1 = rect.y;
+	int16_t y2 = rect.y+rect.height;
 	Line_width(x1, y1, x1, y2, width, color); // horizontal line
 	Line_width(x2, y1, x2, y2, width, color);
 	Line_width(x1, y1, x2, y1, width, color); // vertical line
 	Line_width(x1, y2, x2, y2, width, color);
 }
 
-void TFT_LCD::Block(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
-		uint16_t color, uint16_t fill) /* draw a rectangle with filled color */
-		{
+void TFT_LCD::Block(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t color, uint16_t fill) /* draw a rectangle with filled color */
+{
 	int i;
 
 	Line(x1, y1, x1, y2, color); // horizontal line
@@ -1395,6 +1482,51 @@ void TFT_LCD::Block(int16_t x1, int16_t y1, int16_t x2, int16_t y2,
 		for (i = y2 + 1; i <= y1 - 1; i++)
 			Line(x1 + 1, i, x2 - 1, i, fill);
 	}
+}
+void TFT_LCD::Block(Rect rect, uint16_t color, uint16_t fill)
+{
+	int i;
+	int16_t x1 = rect.x;
+	int16_t x2 = rect.x+rect.width;
+	int16_t y1 = rect.y;
+	int16_t y2 = rect.y+rect.height;
+	cs_select();
+	DC_COMMAND();
+	write8(HX8357_CASET);
+	DC_DATA();
+	write16(x1);
+	DC_DATA();
+	write16(x2-1);
+	DC_COMMAND();
+	write8(HX8357_PASET);
+	DC_DATA();
+	write16(y1);
+	DC_DATA();
+	write16(y2-1);
+	DC_COMMAND();
+	write8(HX8357_RAMWR);
+	DC_DATA();
+	for(i=0;i<rect.width*rect.height;i++)
+	{
+		write16(color);
+	}
+	cs_deselect();
+	if(color != fill)
+	{
+		Line(x1, y1, x1, y2, color); // horizontal line
+		Line(x2, y1, x2, y2, color);
+		Line(x1, y1, x2, y1, color); // vertical line
+		Line(x1, y2, x2, y2, color);
+	}
+//
+//	if ((y1 < y2) && (x1 != x2)) // fill block
+//			{
+//		for (i = y1 + 1; i <= y2 - 1; i++)
+//			Line(x1 + 1, i, x2 - 1, i, fill);
+//	} else if ((y1 > y2) && (x1 != x2)) {
+//		for (i = y2 + 1; i <= y1 - 1; i++)
+//			Line(x1 + 1, i, x2 - 1, i, fill);
+//	}
 }
 
 void TFT_LCD::Circle(int16_t x1, int16_t y1, int16_t r, uint16_t color) /* draw a circle */
@@ -1420,6 +1552,37 @@ void TFT_LCD::Circle(int16_t x1, int16_t y1, int16_t r, uint16_t color) /* draw 
 		TFT_pixel(x, y, color);
 	}
 }
+void TFT_LCD::Circle(int16_t x1, int16_t y1, int16_t r, uint16_t color, bool fill) /* draw a circle */
+{
+    int x, y;
+    float s;
+
+    if (fill) {
+        // 내부를 채우는 경우, y를 기준으로 수평선을 그림
+        for (y = y1 - r; y <= y1 + r; y++) {
+            s = sqrt((long)r * (long)r - (long)(y - y1) * (long)(y - y1)) + 0.5;
+            x = (int)s;
+            Line(x1 - x, y, x1 + x, y, color);  // 수평선 그리기
+        }
+    } else {
+        // 원 테두리만 그리는 경우
+        for (y = y1 - r * 3 / 4; y <= y1 + r * 3 / 4; y++) {
+            s = sqrt((long)r * (long)r - (long)(y - y1) * (long)(y - y1)) + 0.5;
+            x = x1 + (int)s;
+            TFT_pixel(x, y, color);
+            x = x1 - (int)s;
+            TFT_pixel(x, y, color);
+        }
+
+        for (x = x1 - r * 3 / 4; x <= x1 + r * 3 / 4; x++) {
+            s = sqrt((long)r * (long)r - (long)(x - x1) * (long)(x - x1)) + 0.5;
+            y = y1 + (int)s;
+            TFT_pixel(x, y, color);
+            y = y1 - (int)s;
+            TFT_pixel(x, y, color);
+        }
+    }
+}
 
 void TFT_LCD::Sine(int16_t peak, uint8_t mode, uint16_t color) /* draw a sine curve */
 {
@@ -1435,4 +1598,17 @@ void TFT_LCD::Sine(int16_t peak, uint8_t mode, uint16_t color) /* draw a sine cu
 			x =	120	+ (int) (sin((float) y * 1.6875 * M_PI / 180.) * peak + 0.5);
 			TFT_pixel(x, y, color);
 		}
+}
+
+
+
+void TFT_LCD::Slider(uint16_t xPos, uint16_t yPos,uint16_t percent, uint16_t background_color, uint16_t slider_color)
+{
+	Block(Rect(xPos,yPos,TFTWIDTH-1,50),background_color,background_color);
+	Block(Rect(xPos+20,yPos+20,280,5),slider_color,slider_color);
+	Block(Rect(xPos+10+percent,yPos+15,10,10),Orange,Orange);
+
+	//Circle(xPos+20+percent*2.8,yPos+25,10,slider_color,1);
+
+
 }

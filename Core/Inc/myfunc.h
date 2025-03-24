@@ -14,6 +14,19 @@ extern "C" {
   #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
 #endif /* __GNUC__ */
 
+class Rect{
+private:
+public:
+    Rect();
+    Rect(int x, int y, int width, int height);
+    ~Rect();
+    int x;
+    int y;
+    int width;
+    int height;
+};
+
+
 //void set_uart_handle(UART_HandleTypeDef *huart);
 void blink(int num);
 void analog_init(GPIO_TypeDef* GPIOx,uint16_t pin);

@@ -357,14 +357,14 @@ void SDcard::SD_Read(uint32_t sector) {
 int SDcard::SD_Read(uint32_t sector, uint8_t *buffer) {
 	uint16_t i;
 	//SPI_speed_6MHz();
-	//SPI_speed_1_4MHz();
+	SPI_speed_1_4MHz();
 	//SPI_speed_350kHz();
 
 	// High Capacity 카드가 아니면 섹터번호에 *512
 
 	//	SD_CS = 0;			// SD_CS = Low (SD 카드 활성화)
 	SD_select();
-	HAL_Delay(1);
+	//HAL_Delay(1);
 
 	SD_Command(CMD17, sector);
 	//std::cout<<std::hex<<(int)status<<std::endl;

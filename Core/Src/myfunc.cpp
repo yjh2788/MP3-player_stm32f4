@@ -19,6 +19,24 @@
 //  }
 //  return ch;
 //}
+Rect::Rect()
+{
+
+}
+Rect::Rect(int x, int y, int width, int height)
+{
+    this->x = x;
+    this->y = y;
+    this->width = width;
+    this->height = height;
+}
+
+
+Rect::~Rect()
+{
+
+}
+
 void analog_init(GPIO_TypeDef* GPIOx,uint16_t pin)
 {
 

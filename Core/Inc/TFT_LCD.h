@@ -20,15 +20,14 @@
 //#define TFTWIDTH 480
 //#define TFTHEIGHT 320
 #define TFTLCD_DELAY 250
-
-
+#define CHAR_RETURN_LEN 300
 
 
 #define TFT_RGB 0x08
 #define TFT_BGR 0x00
 #define TFT_degree0 0x00
 #define TFT_degree90 0x60
-#define TFT_degree180 0xD0
+#define TFT_degree180 0xC0
 #define TFT_degree270 0xA0
 #define TFT_Y_INVERT 0x80
 #define TFT_X_INVERT 0x40
@@ -95,6 +94,7 @@ public:
 	void imshow(uint8_t *arr, uint8_t res);
 	void imshow(uint8_t *arr, int width, int height);
 	void imshow(uint8_t *arr, int x, int y, int width, int height);
+	void bitmap(uint16_t * arr, int x, int y, int width, int height);
 	void sendWord(uint8_t IR, uint16_t data);
 	void sendByte(uint8_t IR, uint8_t data);
 	void sendcommand(uint8_t IR);
@@ -144,10 +144,20 @@ public:
 			uint16_t color);       // draw a rectangle
 	void Rectangle(int16_t x1, int16_t y1, int16_t x2, int16_t y2, int16_t width,
 				uint16_t color);       // draw a rectangle
+	void Rectangle(Rect rect, int16_t width, uint16_t color);
+	void Rectangle_rect(int16_t x, int16_t y, int16_t width, int16_t height,
+			int16_t l_width, uint16_t color);
 	void Block(int16_t x1, int16_t y1, int16_t x2, int16_t y2, uint16_t color,
 			uint16_t fill); // draw a rectangle with filled color
+	void Block(Rect rect, uint16_t color, uint16_t fill); // draw a rectangle with filled color
 	void Circle(int16_t x1, int16_t y1, int16_t r, uint16_t color); // draw a circle
+	void Circle(int16_t x1, int16_t y1, int16_t r, uint16_t color, bool fill); /* draw a circle */
 	void Sine(int16_t peak, uint8_t mode, uint16_t color);
+
+
+	//GUI
+	void Slider(uint16_t xPos, uint16_t yPos,uint16_t percent, uint16_t background_color, uint16_t slider_color);
+
 };
 #ifdef __cplusplus
 }

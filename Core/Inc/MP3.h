@@ -34,6 +34,9 @@ enum Pages{
 #define EVENT_NEXT 6
 #define EVENT_PREV 7
 
+void SkipID3v2(FIL *fil);
+void FindFirstAudioFrame(FIL *fil);
+void ReadMP3Audio(const char *filename);
 
 void scanMp3Files(TCHAR * path);
 void scanMp3FilesSFN(TCHAR *path);

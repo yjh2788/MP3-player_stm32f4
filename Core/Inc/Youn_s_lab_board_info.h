@@ -45,8 +45,8 @@
 //TFT LCD
 
  //chose communication mode
- //#define TFT_8BIT
-#define TFT_SPI
+#define TFT_8BIT
+//#define TFT_SPI
 
 #ifdef TFT_8BIT
 //#include "BUS_control.h

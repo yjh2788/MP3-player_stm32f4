@@ -156,8 +156,10 @@ uint8_t volume=200;
 
 uint16_t play_emoji[SIZE * SIZE];
 uint16_t pause_emoji[SIZE * SIZE];
-uint16_t next_emoji[SIZE * SIZE];
+//uint16_t next_emoji[SIZE * SIZE];
 uint16_t prev_emoji[SIZE * SIZE];
+uint16_t repeat[3200];
+uint16_t repeat1[3200];
 
 
 extern FATFS fs;           // File system object
@@ -282,7 +284,11 @@ static void init_page() {
 	HAL_GPIO_WritePin(SD_PORT, EXT2_SD_CS, GPIO_PIN_SET);
 
 	if (sd.SD_Init(&hspi2))
+	{
 		std::cout << "sd card failed\r" << std::endl;
+		lcd.string(40,150,White,Black,"SD card init failed");
+		lcd.string(40,180,White,Black,"Check the SD card");
+	}
 	else
 		std::cout << "sd card success\r" << std::endl;
 
@@ -320,9 +326,11 @@ static void init_page() {
 
 		lcd.string(40,390,White,Black,"Resource loading...");
 		display_bmp_to_arr("play.bmp",play_emoji);
-		display_bmp_to_arr("next.bmp",next_emoji);
+		//display_bmp_to_arr("next.bmp",next_emoji);
 		display_bmp_to_arr("prev.bmp",prev_emoji);
 		display_bmp_to_arr("pause.bmp",pause_emoji);
+		display_bmp_to_arr("repeat.bmp",repeat);
+		display_bmp_to_arr("repeat1.bmp",repeat1);
 		//display_bmp_to_arr("start.bmp",start_logo);
 		lcd.string(40,390,White,Black,"Resource loading... Done");
 		Home_page();
@@ -352,7 +360,9 @@ static void Main_page() {
 	lcd.string_size(10, 150, White, Background_gray, "Now:", 2, 2);
 	lcd.bitmap(prev_emoji,10,370,100,100);
 	lcd.bitmap(play_emoji,110,370,100,100);
-	lcd.bitmap(next_emoji,210,370,100,100);
+	lcd.bitmap_b(prev_emoji,210,370,100,100);
+	//lcd.bitmap(next_emoji,210,370,100,100);
+	lcd.bitmap(repeat,10,330,80,40);
 //	display_bmp_to_lcd( 110, 370, "play.bmp");
 //	cout<<"lcd_finish\r\n";
 
@@ -817,6 +827,8 @@ void StartControlTask(void *argument) {
 					if (ulNotificationValue == EVENT_REPEAT)
 					{ // repeat
 						botton_repeat = !botton_repeat;
+						if(botton_repeat) lcd.bitmap(repeat1,10,330,80,40);
+						else lcd.bitmap(repeat,10,330,80,40);
 					}
 					if (ulNotificationValue == EVENT_HOME)
 					{ // goto homepage

@@ -95,6 +95,7 @@ public:
 	void imshow(uint8_t *arr, int width, int height);
 	void imshow(uint8_t *arr, int x, int y, int width, int height);
 	void bitmap(uint16_t * arr, int x, int y, int width, int height);
+	void bitmap_b(uint16_t * arr, int x, int y, int width, int height);
 	void sendWord(uint8_t IR, uint16_t data);
 	void sendByte(uint8_t IR, uint8_t data);
 	void sendcommand(uint8_t IR);

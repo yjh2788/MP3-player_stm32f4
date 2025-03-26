@@ -473,6 +473,20 @@ void TFT_LCD::bitmap(uint16_t * arr, int x, int y, int width, int height)
 	}
 	cs_deselect();
 }
+void TFT_LCD::bitmap_b(uint16_t * arr, int x, int y, int width, int height)
+{
+	int total = width * height;
+	setAddrWindow(x, y, width, height);
+	sendcommand(HX8357_RAMWR);
+	cs_select();
+	DC_DATA();
+	for (int j = total-1; j >=0; j--) {
+
+		write16(arr[j]);
+
+	}
+	cs_deselect();
+}
 
 void TFT_LCD::color_screen_8(uint16_t color) /* TFT-LCD full screen color */
 {

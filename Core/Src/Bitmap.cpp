@@ -11,14 +11,14 @@
 #include "ff.h"
 #include "TFT_LCD.h"
 
-inline uint16_t rgb888_to_rgb565(uint8_t r, uint8_t g, uint8_t b) {
+uint16_t rgb888_to_rgb565(uint8_t r, uint8_t g, uint8_t b) {
 	uint16_t r5 = (r >> 3) & 0x1F;  // 8bit -> 5bit
 	uint16_t g6 = (g >> 2) & 0x3F;  // 8bit -> 6bit
 	uint16_t b5 = (b >> 3) & 0x1F;  // 8bit -> 5bit
 	return (r5 << 11) | (g6 << 5) | b5;
 }
 
-inline void display_bmp_to_lcd(int xpos, int ypos, const char *filename) {
+void display_bmp_to_lcd(int xpos, int ypos, const char *filename) {
 	FIL file;
 	FRESULT res;
 	UINT bytes_read;
@@ -99,7 +99,7 @@ inline void display_bmp_to_lcd(int xpos, int ypos, const char *filename) {
 	f_close(&file);
 }
 
-inline void display_bmp_to_arr(const char *filename, uint16_t *buf) {
+void display_bmp_to_arr(const char *filename, uint16_t *buf) {
 	FIL file;
 	FRESULT res;
 	UINT bytes_read;

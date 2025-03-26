@@ -15,20 +15,19 @@ extern "C" {
 
 typedef struct __attribute__((packed)) {
 	uint16_t signature;      // 0x00: "BM"
-	    uint32_t file_size;      // 0x02
-	    uint32_t reserved;       // 0x06
-	    uint32_t data_offset;    // 0x0A
-	    uint32_t dib_size;       // 0x0E
-	    uint32_t width;          // 0x12
-	    uint32_t height;         // 0x16
-	    uint16_t planes;         // 0x1A
-	    uint16_t bits_per_pixel; // 0x1C
-	} BMPHeader;
+	uint32_t file_size;      // 0x02
+	uint32_t reserved;       // 0x06
+	uint32_t data_offset;    // 0x0A
+	uint32_t dib_size;       // 0x0E
+	uint32_t width;          // 0x12
+	uint32_t height;         // 0x16
+	uint16_t planes;         // 0x1A
+	uint16_t bits_per_pixel; // 0x1C
+} BMPHeader;
 
-inline uint16_t rgb888_to_rgb565(uint8_t r, uint8_t g, uint8_t b);
-inline void display_bmp_to_lcd(int x, int y, const char* filename);
-inline void display_bmp_to_arr(const char* filename, uint16_t *buf);
-
+uint16_t rgb888_to_rgb565(uint8_t r, uint8_t g, uint8_t b);
+void display_bmp_to_lcd(int x, int y, const char *filename);
+void display_bmp_to_arr(const char *filename, uint16_t *buf);
 
 #ifdef __cplusplus
 }

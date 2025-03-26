@@ -27,6 +27,7 @@
 
 #include "myfunc.h"
 #include "MP3.h"
+#include "Bitmap.h"
 
 #include "TFT_LCD.h"
 #include "SDcard.h"
@@ -66,11 +67,11 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 /* Definitions for ControlTask */
 osThreadId_t ControlTaskHandle;
 const osThreadAttr_t ControlTask_attributes = { .name = "ControlTask",
-		.stack_size = 128 * 4, .priority = (osPriority_t) osPriorityNormal, };
+		.stack_size = 512 * 4, .priority = (osPriority_t) osPriorityNormal, };
 /* Definitions for AudioTask */
 osThreadId_t AudioTaskHandle;
 const osThreadAttr_t AudioTask_attributes = { .name = "AudioTask", .stack_size =
-		512 * 4, .priority = (osPriority_t) osPriorityLow, };
+		1024 * 4, .priority = (osPriority_t) osPriorityLow, };
 
 osSemaphoreId_t stateSemaphore;
 osMessageQueueId_t buttonQueue;
@@ -126,6 +127,7 @@ void StartAudioTask(void *argument);
 void Home_page();
 static void Main_page();
 static void init_page();
+void UpdateMusicName(char* name);
 
 /* USER CODE BEGIN PFP */
 
@@ -151,15 +153,11 @@ int music_no = 0;
 uint8_t volume=200;
 
 #define SIZE 100
+
 uint16_t play_emoji[SIZE * SIZE];
-//bool stop_flag = 0;
-//bool volume_flag = 0;
-//bool change_flag = 0;
-//bool home_flag = 0;
-//bool play_again = 0;
-//bool p_flag = 0;
-//bool up = 0, down = 0; //,select=0;
-//bool play_state = 0;
+uint16_t pause_emoji[SIZE * SIZE];
+uint16_t next_emoji[SIZE * SIZE];
+uint16_t prev_emoji[SIZE * SIZE];
 
 
 extern FATFS fs;           // File system object
@@ -205,28 +203,6 @@ int main(void) {
 	//MX_USB_OTG_FS_PCD_Init();
 	MX_FATFS_Init();
 	std::cout.rdbuf(&uart_redirector);
-	for (int i = 0; i < SIZE * SIZE; i++) {
-	        play_emoji[i] = olive;//0x2104;
-	}
-
-	int x_left = SIZE / 4;          // 왼쪽 꼭짓점 x (SIZE의 1/4)
-	int x_right = SIZE * 3 / 4;     // 오른쪽 꼭짓점 x (SIZE의 3/4)
-	int y_center = SIZE / 2;        // 중앙 y (SIZE의 1/2)
-	int y_top = SIZE / 4;           // 위쪽 꼭짓점 y (SIZE의 1/4)
-	int y_bottom = SIZE * 3 / 4;    // 아래쪽 꼭짓점 y (SIZE의 3/4)
-
-	    // 삼각형 내부 채우기
-	for (int x = x_left; x <= x_right; x++) {
-	        // x가 x_left에서 x_right로 갈수록 y 범위 계산
-		int y_upper = y_center - (x - x_left) * (y_center - y_top) / (x_right - x_left); // 상단 경계
-		int y_lower = y_center + (x - x_left) * (y_bottom - y_center) / (x_right - x_left); // 하단 경계
-
-		for (int y = y_upper; y <= y_lower; y++) {
-			if (y >= 0 && y < SIZE) { // 배열 범위 초과 방지
-				play_emoji[y * SIZE + x] = 0xFFFF; // 흰색으로 채움
-	        }
-	    }
-	}
 	/* USER CODE BEGIN 2 */
 	//init_page();
 	//cout<<"music start\r"<<endl;
@@ -313,20 +289,21 @@ static void init_page() {
 	sd.FAT_Init();
 	vs.vs1003b_init(&hspi2);
 	sd.SPI_speed_11MHz();
-	numofFile = sd.fatGetDirEntry();
-	cout << "num of File=" << std::dec << numofFile << "\r" << endl;
+	//numofFile = sd.fatGetDirEntry();
+	//cout << "num of File=" << std::dec << numofFile << "\r" << endl;
 
-	char buffer[20];
+	//char buffer[20];
 
-	snprintf(buffer, sizeof(buffer), "%d", numofFile);
+	//snprintf(buffer, sizeof(buffer), "%d", numofFile);
 
-	lcd.string(10, 340, Cyan, Black, "num of files:");
-	lcd.string(120, 340, Cyan, Black, buffer);
+	//if(DEBUG) lcd.string(10, 340, Cyan, Black, "num of files:");
+	//if(DEBUG) lcd.string(120, 340, Cyan, Black, buffer);
 
 
 	if (f_mount(&fs, "", 1) == FR_OK)
 	{
 		std::cout << "Filesystem mounted!\r" << std::endl;
+		display_bmp_to_lcd(0,0,"Logo.bmp");
 
 		// MP3 파일 검색
 		scanMp3FilesSFN(_T("/"));
@@ -339,15 +316,28 @@ static void init_page() {
 			std::cout << i + 1 << ": " << fileNames[i] << "\r" << std::endl;
 		}
 
+		lcd.string(10,370,Cyan,Black,"Resource loading...");
+		display_bmp_to_arr("play.bmp",play_emoji);
+		display_bmp_to_arr("next.bmp",next_emoji);
+		display_bmp_to_arr("prev.bmp",prev_emoji);
+		display_bmp_to_arr("pause.bmp",pause_emoji);
+		//display_bmp_to_arr("start.bmp",start_logo);
+		lcd.string(10,370,Cyan,Black,"Resource loading... Done");
+		Home_page();
+		f_mount(NULL, "", 0);
+		f_mount(&fs, "", 1);
+//		cout<<"done\r\n";
+
+
 	//		// 파일 열고 데이터 전송
 	//		for (uint16_t i = 0; i < fileCount; i++) {
 	//			char filePath[64];
 	//			snprintf(filePath, sizeof(filePath), "/%s", fileNames[i]);
 	//			readAndSendFile(filePath);
 	//		}
-		} else {
-			std::cout << "Filesystem mount failed!\r" << std::endl;
-		}
+	} else {
+		std::cout << "Filesystem mount failed!\r" << std::endl;
+	}
 
 
 }
@@ -360,14 +350,25 @@ static void Main_page() {
 	lcd.string_size(20, 20, White, button_gray, "Play", 2, 2);
 	lcd.string_size(10, 70, White, Background_gray, "Playing", 2, 2);
 	lcd.string_size(10, 150, White, Background_gray, "Now:", 2, 2);
+	lcd.bitmap(prev_emoji,10,370,100,100);
 	lcd.bitmap(play_emoji,110,370,100,100);
+	lcd.bitmap(next_emoji,210,370,100,100);
+//	display_bmp_to_lcd( 110, 370, "play.bmp");
+//	cout<<"lcd_finish\r\n";
+
 }
 
 void Home_page()
 {
-	lcd.color_screen_8(Background_gray);
-	lcd.string_size(50, 220, Green, Black, "Youn's LAB MP3 Player",1,1);
-	lcd.string_size(100, 260, Green, Black, "START",1,1);
+	lcd.color_screen_8(Black);
+	//lcd.bitmap(start_logo, 60, 190, 200, 100);
+	display_bmp_to_lcd(60,190,"start.bmp");
+
+}
+void UpdateMusicName(char* name)
+{
+	lcd.Block(Rect(5,170,310,30), Background_gray, Background_gray);
+	lcd.string_size(20, 170, White, Background_gray, name, 1, 1);
 }
 
 /**
@@ -817,6 +818,7 @@ void StartControlTask(void *argument) {
 					if (ulNotificationValue == EVENT_HOME)
 					{ // goto homepage
 						current_page = HOME_PAGE;
+						music_no=0;
 						is_playing = false;
 						reset_track = true;
 						Home_page();
@@ -825,8 +827,16 @@ void StartControlTask(void *argument) {
 					{ // pause/resume
 						is_playing = !is_playing;
 
-						if(is_playing) lcd.string_size(10, 70, White, Background_gray, "Playing", 2, 2);
-						else lcd.string_size(10, 70, White, Background_gray, "Pause  ", 2, 2);
+						if(is_playing)
+						{
+							lcd.string_size(10, 70, White, Background_gray, "Playing", 2, 2);
+							lcd.bitmap(play_emoji,110,370,100,100);
+						}
+						else
+						{
+							lcd.string_size(10, 70, White, Background_gray, "Pause  ", 2, 2);
+							lcd.bitmap(pause_emoji,110,370,100,100);
+						}
 						reset_track = false;
 					}
 					else if (ulNotificationValue == EVENT_NEXT)
@@ -846,7 +856,6 @@ void StartControlTask(void *argument) {
 	}
 /* USER CODE END 5 */
 }
-
 /* USER CODE BEGIN Header_StartAudioTask */
 /**
  * @brief Function implementing the AudioTask thread.
@@ -860,13 +869,14 @@ void StartAudioTask(void *argument) {
 	u_long rd_sec;
 	int i, n;
 	u_long k = 0, kd;
-
+    FIL fil1;
 	init_page();
 	osSemaphoreAcquire(stateSemaphore, osWaitForever);
 	init=1;
 	osSemaphoreRelease(stateSemaphore);
 	vs.vs1003b_set_volume(200, 200);
 	sd.SPI_speed_6MHz();
+	FRESULT res;
 	uint8_t button_event;
 	bool next = 0;
 	bool prev = 0;
@@ -907,26 +917,32 @@ void StartAudioTask(void *argument) {
 		}
 
 		if (playing && reset) { // 재생 시작 시 초기화
+			if(music!=0){
+				osSemaphoreAcquire(stateSemaphore, osWaitForever);
+				music_no = 0;
+				osSemaphoreRelease(stateSemaphore);
+			}
 			k = 0;
-			kd = sd.file_len[music];
-			c_clust = sd.fileStartClust[music];
+			kd = sd.file_len[0];
+			c_clust = sd.fileStartClust[0];
 			osSemaphoreAcquire(stateSemaphore, osWaitForever);
 			reset_track = false; // 초기화 후 리셋
 			osSemaphoreRelease(stateSemaphore);
 #ifdef USE_FATFS_LIB
 			c_clust=1;
+			bytesRead=0;
 			//f_close(&fil);
-			if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
+			if (f_open(&fil, fileNames[0], FA_READ) != FR_OK) {
 				c_clust=0;
 				osSemaphoreAcquire(stateSemaphore, osWaitForever);
-				music_no = music+1;
+				music_no = 1;
 				osSemaphoreRelease(stateSemaphore);
 				std::cout<<"file open failed: \r\n";
 			    //f_mount(NULL, "", 0); // 마운트 해제
 			    //return;
 			}
-
-			lcd.string_size(20, 170, White, Background_gray, fileNames[music], 1, 1);
+			UpdateMusicName(fileNames[music]);
+			//lcd.string_size(20, 170, White, Background_gray, fileNames[music], 1, 1);
 #endif
 		}
 		//std::cout<<"playing:"<<playing<<", reset:"<<reset<<", music_no:"<<music<<", clust:"<<c_clust<<", k:"<<k<<", kd:"<<kd<<" vol:"<<(int)vol<<"\r"<<endl;
@@ -956,7 +972,8 @@ void StartAudioTask(void *argument) {
 			c_clust = sd.fileStartClust[music];               // f_no 파일 시작 클러스터
 #ifdef USE_FATFS_LIB
 			c_clust=1;
-			f_close(&fil);
+			if(f_close(&fil)!= FR_OK) std::cout<<"file close failed:\r"<<endl;
+			//f_close(&fil);
 			if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
 				c_clust=0;
 				osSemaphoreAcquire(stateSemaphore, osWaitForever);
@@ -966,7 +983,8 @@ void StartAudioTask(void *argument) {
 			    //f_mount(NULL, "", 0); // 마운트 해제
 			    //return;
 			}
-			lcd.string_size(20, 170, White, Background_gray, fileNames[music], 1, 1);
+			UpdateMusicName(fileNames[music]);
+			//lcd.string_size(20, 170, White, Background_gray, fileNames[music], 1, 1);
 #endif
 		}
 
@@ -976,7 +994,7 @@ void StartAudioTask(void *argument) {
 
 			if(f_eof(&fil))//end of file
 			{
-				f_close(&fil);
+				if(f_close(&fil)!= FR_OK) std::cout<<"file close failed:\r"<<endl;
 				f_mount(NULL,"",0);
 				f_mount(&fs,"",1);
 				music = repeat ? music : music + 1;
@@ -992,15 +1010,15 @@ void StartAudioTask(void *argument) {
 					osSemaphoreRelease(stateSemaphore);
 					std::cout<<"file open failed: \r\n";
 				}
-
-				lcd.string_size(20, 170, White, Background_gray, fileNames[music], 1, 1);
+				UpdateMusicName(fileNames[music]);
+				//lcd.string_size(20, 170, White, Background_gray, fileNames[music], 1, 1);
 
 			}
 			else
 			{
-				cout<<"f_tell: "<<f_tell(&fil)<<", f_size: "<<f_size(&fil)<<"\r\n";
 				// read file
-				if (f_read(&fil, buf, sizeof(buf), &bytesRead) != FR_OK) {
+				res=f_read(&fil, buf, sizeof(buf), &bytesRead);
+				if ( res!= FR_OK) {
 					std::cout<<"read failed:"<< res<<'\r'<<endl;
 					DWORD pos=f_tell(&fil);
 					f_close(&fil);

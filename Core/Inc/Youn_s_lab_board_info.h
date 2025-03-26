@@ -11,6 +11,9 @@
 
 #ifdef __cplusplus
  extern "C" {
+
+#define DEBUG 0
+
 #endif
 //BUTTONS
 #define BOTTON_VOL_P GPIO_PIN_11

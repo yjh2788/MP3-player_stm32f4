@@ -216,7 +216,7 @@ void VS1003B::vs1003b_init_registers(void) {
 bool VS1003B::vs1003b_init(SPI_HandleTypeDef *spi) {
 	m_spi = spi;
 	TFT_LCD &lcd = TFT_LCD::getInstance();
-	lcd.string(10, 260, Cyan, Black, " VS1003b initialize...");
+	if(DEBUG) lcd.string(10, 260, Cyan, Black, " VS1003b initialize...");
 
 	volume = 50;					// initial volume = 200
 	bass = 0;					// initial bass and treble = 0
@@ -226,7 +226,7 @@ bool VS1003B::vs1003b_init(SPI_HandleTypeDef *spi) {
 
 	vs1003b_reset();
 	HAL_Delay(2);
-	lcd.string(10, 280, Cyan, Black, "VS1003b reset");
+	if(DEBUG) lcd.string(10, 280, Cyan, Black, "VS1003b reset");
 	vs1003b_set_volume(volume, volume);
 	while (vs1003b_is_busy())
 		;
@@ -268,22 +268,21 @@ bool VS1003B::vs1003b_init(SPI_HandleTypeDef *spi) {
 	//HAL_Delay(1000);
 
 	if (((status & 0x0030) != 0x0030) || !(mode & 0x0800)) {
-		lcd.string(10, 300, Cyan, Black, " VS1003b initialize failed 1");
+		if(DEBUG) lcd.string(10, 300, Cyan, Black, " VS1003b initialize failed 1");
 		std::cout << "vs1003 fail\r" << std::endl;
-		lcd.TFT_pixel(10,300,White);
 		while (1)
 			;
 		return false;
 	}
 	if ((status == 0xff) || (mode == 0xff)) {
-		lcd.string(10, 300, Cyan, Black, " VS1003b initialize failed 2");
+		if(DEBUG) lcd.string(10, 300, Cyan, Black, " VS1003b initialize failed 2");
 		std::cout << "vs1003 fail\r" << std::endl;
 		while (1)
 			;
 		return false;
 
 	}
-	lcd.string(10, 300, Cyan, Black, " VS1003b initialized");
+	if(DEBUG) lcd.string(10, 300, Cyan, Black, " VS1003b initialized");
 	std::cout << "vs1003 init success\r" << std::endl;
 	return true;
 }

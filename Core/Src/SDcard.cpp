@@ -39,12 +39,15 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 
 	//m_lcd.color_screen(Black);
 	//m_lcd.frame();
-	m_lcd.string(10, 5, Green, Black,
-			(char*) " ******************************");
-	m_lcd.string(10, 16, Magenta, Black,
-			(char*) "     SD/SDHC initialize...     ");
-	m_lcd.string(10, 28, Green, Black,
-			(char*) " ******************************");
+	if(DEBUG)
+	{
+		m_lcd.string(10, 5, Green, Black,
+				(char*) " ******************************");
+		m_lcd.string(10, 16, Magenta, Black,
+				(char*) "     SD/SDHC initialize...     ");
+		m_lcd.string(10, 28, Green, Black,
+				(char*) " ******************************");
+	}
 //////////////////////////////////////////////////////////////////
 
 	SPI_speed_175kHz(); // SPI 250kHz (100 ~ 400 kHz)
@@ -69,13 +72,13 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 	if (response == 0x01) {
 		// IDLE 상태 진입 성공
 		SD_deselect();
-		m_lcd.string(60, 48, Green, Black, " Card in IDLE state");
+		if(DEBUG) m_lcd.string(60, 48, Green, Black, " Card in IDLE state");
 		SD_select();
 		std::cout << "IDLE state \r" << std::endl;
 	} else {
 		// 오류 처리
 		SD_deselect();
-		m_lcd.string(60, 48, Red, Black, "Error");
+		if(DEBUG) m_lcd.string(60, 48, Red, Black, "Error");
 
 		std::cout << "error state \r" << std::endl;
 		std::cout << "normal" << response << "\r" << std::endl;
@@ -94,7 +97,7 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 //		HAL_Delay(3);
 //	}
 	SD_deselect();
-	m_lcd.string(10, 64, Magenta, Black, " CMD8 : ");
+	if(DEBUG) m_lcd.string(10, 64, Magenta, Black, " CMD8 : ");
 	SD_select();
 
 	SD_Command(CMD8, 0x1AA);
@@ -127,12 +130,12 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 
 		if (r1_response == 0x05) {
 			SD_deselect();
-			m_lcd.string(100, 64, Green, Black, "/ V1.X");
+			if(DEBUG) m_lcd.string(100, 64, Green, Black, "/ V1.X");
 			SD_select();
 
 		} else if (r1_response == 0x01) {
 			SD_deselect();
-			m_lcd.string(100, 64, Green, Black, "/ V2.X");
+			if(DEBUG) m_lcd.string(100, 64, Green, Black, "/ V2.X");
 			SD_select();
 		}
 
@@ -142,7 +145,7 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 			do {
 				// 5번 이상 반복해야 R1 Response = 0x0 수신 가능
 				SD_deselect();
-				m_lcd.string(10, 80, Magenta, Black, " CMD55: ");
+				if(DEBUG) m_lcd.string(10, 80, Magenta, Black, " CMD55: ");
 				SD_select();
 
 				SD_Command(CMD55, 0);
@@ -154,12 +157,12 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 				if (response == 0x01) {
 					std::cout << "CMD55 success \r" << std::endl;
 					SD_deselect();
-					m_lcd.string(60, 80, Magenta, Black, "success");
+					if(DEBUG) m_lcd.string(60, 80, Magenta, Black, "success");
 					SD_select();
 				} else {
 					std::cout << "CMD55 failed\r" << std::endl;
 					SD_deselect();
-					m_lcd.string(60, 80, Magenta, Black, " failed ");
+					if(DEBUG) m_lcd.string(60, 80, Magenta, Black, " failed ");
 					SD_select();
 					//return 0x01;
 				}
@@ -170,7 +173,7 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 				SPI_write(0xFF);
 
 				SD_deselect();
-				m_lcd.string(10, 96, Magenta, Black, " ACMD41:");
+				if(DEBUG) m_lcd.string(10, 96, Magenta, Black, " ACMD41:");
 				SD_select();
 
 				SD_Command(CMD41, 0x40000000); // HCS bit = 1
@@ -181,7 +184,7 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 
 				if (response == 0x00) {
 					SD_deselect();
-					m_lcd.string(60, 96, Magenta, Black, "success");
+					if(DEBUG) m_lcd.string(60, 96, Magenta, Black, "success");
 					SD_select();
 					std::cout << "CMD41 success\r" << std::endl;
 					std::cout << "res1=" << std::hex << int(response) << "\r"
@@ -189,7 +192,7 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 					break;
 				} else {
 					SD_deselect();
-					m_lcd.string(60, 96, Magenta, Black, " failed ");
+					if(DEBUG) m_lcd.string(60, 96, Magenta, Black, " failed ");
 					SD_select();
 					std::cout << "CMD41 failed\r" << std::endl;
 					//SD_deselect();
@@ -213,14 +216,14 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 			}
 		} //end of if
 		else {
-			std::cout << "cmd failed\r" << std::endl;
+			if(DEBUG) std::cout << "cmd failed\r" << std::endl;
 			goto START;
 		}
 
 		//while((r7_response[2] == 0x01 && r7_response[3] == 0xAA));
 		//if(cmd_flag == 1) //printString(tftm_lcd_xpos, tftm_lcd_ypos, "SD ready!\n", 0xFFFF, 0xF800, 2);
 		SD_deselect();
-		m_lcd.string(10, 112, Magenta, Black, " CMD58: "); // send CMD58(check SDHC)
+		if(DEBUG) m_lcd.string(10, 112, Magenta, Black, " CMD58: "); // send CMD58(check SDHC)
 		SD_select();
 		//m_lcd.color(Cyan, Black);
 		SD_Command(CMD58, 0);			// check ccs bit
@@ -240,12 +243,12 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 		if ((r3_response[1] & 0x40) != 0) {
 			sd_type = SD_VER2_HC;
 			SD_deselect();
-			m_lcd.string(100, 112, Magenta, Black, "(SDHC)");
+			if(DEBUG) m_lcd.string(100, 112, Magenta, Black, "(SDHC)");
 			SD_select();
 		} else {
 			sd_type = SD_VER2_SD;
 			SD_deselect();
-			m_lcd.string(100, 112, Magenta, Black, "(SD)");
+			if(DEBUG) m_lcd.string(100, 112, Magenta, Black, "(SD)");
 			SD_select();
 		}
 
@@ -277,7 +280,7 @@ bool SDcard::SD_Init(SPI_HandleTypeDef *spi) {
 	//	SD_CS = 1;
 	SD_deselect();
 
-	m_lcd.string(40, 128, Green, Black, "initialize complete");
+	if(DEBUG) m_lcd.string(40, 128, Green, Black, "initialize complete");
 	std::cout << "sd card initialized \r" << std::endl;
 	return 0;
 
@@ -459,9 +462,9 @@ void SDcard::FAT_Init(void) {
 	uint32_t StartLBA;		// PBR 섹터 주소
 	struct PartTable *PartTable_ptr;		// MBR sector partition table 구조체
 	struct BootSector *BootSector_ptr;	// PBR sector 구조체
-	m_lcd.string(10, 160, Green, Black, " ******************************");
-	m_lcd.string(10, 180, Magenta, Black, "         FAT32 initialize...  ");
-	m_lcd.string(10, 200, Green, Black, " ******************************");
+	if(DEBUG) m_lcd.string(10, 160, Green, Black, " ******************************");
+	if(DEBUG) m_lcd.string(10, 180, Magenta, Black, "         FAT32 initialize...  ");
+	if(DEBUG) m_lcd.string(10, 200, Green, Black, " ******************************");
 
 	std::cout << "parttable size:" << std::dec << sizeof(PartTable) << "\r"
 			<< std::endl;
@@ -470,7 +473,7 @@ void SDcard::FAT_Init(void) {
 
 	std::cout << "FAT init start\r" << std::endl;
 	SD_Read(MBR);						// MBR 섹터(0번섹터)를 읽어 버퍼에 저장
-	m_lcd.string(10, 240, Green, Black, " ******************************");
+	if(DEBUG) m_lcd.string(10, 240, Green, Black, " ******************************");
 	// MBR 섹터의 첫번째 파티션 테이블을 저장
 	// 446바이트는 Boot code이고, 446번부터 16바이트씩 파티션#1, #2, #3...
 	PartTable_ptr = (struct PartTable*) (buffer + 446);
@@ -496,7 +499,7 @@ void SDcard::FAT_Init(void) {
 	SecPerClus = BootSector_ptr->BPB_SecPerClus;
 	std::cout << "secperClus" << std::hex << (int) SecPerClus << "\r"
 			<< std::endl;
-	m_lcd.string(50, 220, Green, Black, "FAT32 initialized!");
+	if(DEBUG) m_lcd.string(50, 220, Green, Black, "FAT32 initialized!");
 }
 /************************************************************************
  Directory Entry는 하나의 섹터에 16개 존재

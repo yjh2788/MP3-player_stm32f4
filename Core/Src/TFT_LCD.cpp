@@ -466,7 +466,7 @@ void TFT_LCD::bitmap(uint16_t * arr, int x, int y, int width, int height)
 	sendcommand(HX8357_RAMWR);
 	cs_select();
 	DC_DATA();
-	for (int j = total-1; j >= 0; j--) {
+	for (int j = 0; j < total; j++) {
 
 		write16(arr[j]);
 

@@ -148,7 +148,7 @@ bool botton_pause = 0;
 bool init=0;
 bool is_playing = 0;
 bool reset_track = 1;
-int numofFile = 0;
+volatile int numofFile = 0;
 int music_no = 0;
 uint8_t volume=200;
 
@@ -165,7 +165,7 @@ extern FIL fil;            // File object
 extern FILINFO fno;        // File information object
 extern DIR dir;            // Directory object
 extern char fileNames[MAX_FILES][MAX_FILENAME];  // 파일 이름 저장 배열
-extern UINT fileCount; // 파일 개수
+extern volatile UINT fileCount; // 파일 개수
 
 /* USER CODE END 0 */
 
@@ -270,7 +270,7 @@ static void init_page() {
 
 	lcd.init();  //8bit
 	//lcd.init(&hspi2);
-	lcd.color_screen_8(Background_gray);
+	lcd.color_screen_8(Black);
 
 	//cout << "lcd init\r" << endl;
 	//printf("finished/n/r");
@@ -289,7 +289,7 @@ static void init_page() {
 	sd.FAT_Init();
 	vs.vs1003b_init(&hspi2);
 	sd.SPI_speed_11MHz();
-	//numofFile = sd.fatGetDirEntry();
+	numofFile = sd.fatGetDirEntry();
 	//cout << "num of File=" << std::dec << numofFile << "\r" << endl;
 
 	//char buffer[20];
@@ -303,7 +303,8 @@ static void init_page() {
 	if (f_mount(&fs, "", 1) == FR_OK)
 	{
 		std::cout << "Filesystem mounted!\r" << std::endl;
-		display_bmp_to_lcd(0,0,"Logo.bmp");
+		display_bmp_to_lcd(90,120,"Logo.bmp");
+		display_bmp_to_lcd(30,300,"product_name.bmp");
 
 		// MP3 파일 검색
 		scanMp3FilesSFN(_T("/"));
@@ -315,17 +316,16 @@ static void init_page() {
 
 			std::cout << i + 1 << ": " << fileNames[i] << "\r" << std::endl;
 		}
+		numofFile=fileCount;
 
-		lcd.string(10,370,Cyan,Black,"Resource loading...");
+		lcd.string(40,390,White,Black,"Resource loading...");
 		display_bmp_to_arr("play.bmp",play_emoji);
 		display_bmp_to_arr("next.bmp",next_emoji);
 		display_bmp_to_arr("prev.bmp",prev_emoji);
 		display_bmp_to_arr("pause.bmp",pause_emoji);
 		//display_bmp_to_arr("start.bmp",start_logo);
-		lcd.string(10,370,Cyan,Black,"Resource loading... Done");
+		lcd.string(40,390,White,Black,"Resource loading... Done");
 		Home_page();
-		f_mount(NULL, "", 0);
-		f_mount(&fs, "", 1);
 //		cout<<"done\r\n";
 
 
@@ -363,6 +363,9 @@ void Home_page()
 	lcd.color_screen_8(Black);
 	//lcd.bitmap(start_logo, 60, 190, 200, 100);
 	display_bmp_to_lcd(60,190,"start.bmp");
+	f_mount(NULL,"",0);
+	f_mount(&fs,"",1);
+
 
 }
 void UpdateMusicName(char* name)
@@ -967,6 +970,7 @@ void StartAudioTask(void *argument) {
 			osSemaphoreAcquire(stateSemaphore, osWaitForever);
 			music_no = music;
 			osSemaphoreRelease(stateSemaphore);
+			//std::cout<<"num of file:"<<numofFile<<"music:"<<music_no<<"\r\n";
 			k = 0;
 			kd = sd.file_len[music];                            // 파일 길이 섹터수
 			c_clust = sd.fileStartClust[music];               // f_no 파일 시작 클러스터

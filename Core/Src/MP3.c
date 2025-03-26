@@ -16,7 +16,7 @@ FIL fil;            // File object
 FILINFO fno;        // File information object
 DIR dir;            // Directory object
 TCHAR  fileNames[MAX_FILES][MAX_FILENAME];  // 파일 이름 저장 배열
-UINT fileCount = 0; // 파일 개수
+volatile UINT fileCount = 0; // 파일 개수
 
 
 void SkipID3v2(FIL *fil) {
@@ -35,7 +35,7 @@ void SkipID3v2(FIL *fil) {
 
         // ID3v2 건너뛰기
         f_lseek(fil, size);
-        printf("ID3v2 크기: %lu 바이트 건너뜀\n", size);
+        printf("ID3v2 size: %lu byte jump\n", size);
     } else {
         // ID3v2 없으면 처음으로 되돌리기
         f_lseek(fil, 0);

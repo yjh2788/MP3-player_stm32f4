@@ -32,7 +32,10 @@ int ScanFolder(TCHAR *path) {
 				break; // 끝까지 읽었거나 오류 발생
 
 			if ((finfo.fattrib & AM_DIR)) {
-				if (FolderCount < MAX_FILES) {
+				if ((finfo.fattrib & AM_HID)) {
+					continue;
+				}
+				else if (FolderCount < MAX_FILES) {
 					wcscpy(FolderNames[FolderCount], finfo.fname); // save folder name
 					FolderCount++;
 				}

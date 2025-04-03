@@ -67,7 +67,7 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 /* Definitions for ControlTask */
 osThreadId_t ControlTaskHandle;
 const osThreadAttr_t ControlTask_attributes = { .name = "ControlTask",
-		.stack_size = 512 * 4, .priority = (osPriority_t) osPriorityNormal, };
+		.stack_size = 1024 * 4, .priority = (osPriority_t) osPriorityNormal, };
 /* Definitions for AudioTask */
 osThreadId_t AudioTaskHandle;
 const osThreadAttr_t AudioTask_attributes = { .name = "AudioTask", .stack_size =
@@ -128,7 +128,7 @@ void Home_page();
 static void Main_page();
 static void init_page();
 void UpdateMusicName(char* name);
-
+void FolderListPage(TCHAR* PATH);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -139,19 +139,21 @@ void UpdateMusicName(char* name);
 TFT_LCD &lcd = TFT_LCD::getInstance();
 SDcard &sd = SDcard::getInstance();
 VS1003B &vs = VS1003B::getInstance();
-
+char PATH[256]="/";
 int current_page=HOME_PAGE;
 bool botton_next = 0;
 bool botton_prev = 0;
 bool botton_repeat = 0;
 bool botton_pause = 0;
 bool init=0;
-bool is_playing = 0;
+volatile bool is_playing = 0;
 bool reset_track = 1;
 volatile int numofFile = 0;
 int music_no = 0;
 uint8_t volume=200;
-
+int FolderCount=0;
+int folders=0;
+uint8_t folder_idx=0;
 #define SIZE 100
 
 uint16_t play_emoji[SIZE * SIZE];
@@ -166,7 +168,8 @@ extern FATFS fs;           // File system object
 extern FIL fil;            // File object
 extern FILINFO fno;        // File information object
 extern DIR dir;            // Directory object
-extern char fileNames[MAX_FILES][MAX_FILENAME];  // 파일 이름 저장 배열
+extern TCHAR fileNames[MAX_FILES][MAX_FILENAME];  // 파일 이름 저장 배열
+extern TCHAR FolderNames[MAX_FILES][MAX_FILENAME];
 extern volatile UINT fileCount; // 파일 개수
 
 /* USER CODE END 0 */
@@ -312,17 +315,6 @@ static void init_page() {
 		display_bmp_to_lcd(90,120,"Logo.bmp");
 		display_bmp_to_lcd(30,300,"product_name.bmp");
 
-		// MP3 파일 검색
-		scanMp3FilesSFN(_T("/"));
-		//std::cout<<"num of files:"<<num<<"\r\n";
-
-		// 검색된 파일 정보 출력
-		std::cout << "Found " << fileCount << " MP3 files:\r" << std::endl;
-		for (uint16_t i = 0; i < fileCount; i++) {
-
-			std::cout << i + 1 << ": " << fileNames[i] << "\r" << std::endl;
-		}
-		numofFile=fileCount;
 
 		lcd.string(40,390,White,Black,"Resource loading...");
 		display_bmp_to_arr("play.bmp",play_emoji);
@@ -333,16 +325,8 @@ static void init_page() {
 		display_bmp_to_arr("repeat1.bmp",repeat1);
 		//display_bmp_to_arr("start.bmp",start_logo);
 		lcd.string(40,390,White,Black,"Resource loading... Done");
-		Home_page();
-//		cout<<"done\r\n";
 
 
-	//		// 파일 열고 데이터 전송
-	//		for (uint16_t i = 0; i < fileCount; i++) {
-	//			char filePath[64];
-	//			snprintf(filePath, sizeof(filePath), "/%s", fileNames[i]);
-	//			readAndSendFile(filePath);
-	//		}
 	} else {
 		std::cout << "Filesystem mount failed!\r" << std::endl;
 	}
@@ -352,17 +336,22 @@ static void init_page() {
 
 static void Main_page() {
 	lcd.color_screen_8(Background_gray);
-	lcd.frame();
 	lcd.Rectangle(Rect(0, 0, TFTWIDTH-1, 50), 2, White);
+	lcd.frame();
 	//lcd.Circle(160,160,10,White);
 	lcd.string_size(20, 20, White, button_gray, "Play", 2, 2);
 	lcd.string_size(10, 70, White, Background_gray, "Playing", 2, 2);
-	lcd.string_size(10, 150, White, Background_gray, "Now:", 2, 2);
+	lcd.string_size(10, 270, White, Background_gray, "Now:", 2, 2);
 	lcd.bitmap(prev_emoji,10,370,100,100);
 	lcd.bitmap(play_emoji,110,370,100,100);
 	lcd.bitmap_b(prev_emoji,210,370,100,100);
 	//lcd.bitmap(next_emoji,210,370,100,100);
 	lcd.bitmap(repeat,10,330,80,40);
+	display_bmp_to_lcd(0,90,"album.bmp");
+//	f_mount(NULL,"",0);
+//	f_mount(&fs,"",1);
+//	f_chdir(PATH);
+	lcd.frame();
 //	display_bmp_to_lcd( 110, 370, "play.bmp");
 //	cout<<"lcd_finish\r\n";
 
@@ -370,18 +359,37 @@ static void Main_page() {
 
 void Home_page()
 {
+	strcpy(PATH,"/");
+	f_chdir(PATH);
 	lcd.color_screen_8(Black);
-	//lcd.bitmap(start_logo, 60, 190, 200, 100);
 	display_bmp_to_lcd(60,190,"start.bmp");
 	f_mount(NULL,"",0);
 	f_mount(&fs,"",1);
 
 
 }
+void FolderListPage(TCHAR* PATH)
+{
+	lcd.color_screen_8(Black);
+	FolderCount=ScanFolder(PATH);
+	if(FolderCount>0)
+	{
+		for(int i=1;i<=FolderCount;i++)
+		{
+			lcd.string_size(30, LISTBOX_HEIGHT*i, White, Black, FolderNames[i-1], 1, 1);
+		}
+		lcd.Circle(15, LISTBOX_HEIGHT, 7, White, 1);
+	}
+	else
+	{
+		lcd.string_size(30, 200, White, Background_gray, "There is no Folders", 1, 1);
+	}
+
+}
 void UpdateMusicName(char* name)
 {
-	lcd.Block(Rect(5,170,310,30), Background_gray, Background_gray);
-	lcd.string_size(20, 170, White, Background_gray, name, 1, 1);
+	lcd.Block(Rect(5,290,310,30), Background_gray, Background_gray);
+	lcd.string_size(20, 290, White, Background_gray, name, 1, 1);
 }
 
 /**
@@ -816,12 +824,59 @@ void StartControlTask(void *argument) {
 				{
 					if (ulNotificationValue == EVENT_PAUSE)
 					{
-						current_page = PLAY_PAGE;
-						is_playing = true;
-						reset_track = true;
-						Main_page();
+						current_page = LIST_PAGE;
+						FolderListPage(PATH);
 					}
 				}
+				else if(current_page==LIST_PAGE)
+				{
+					if (ulNotificationValue == EVENT_PAUSE)
+					{
+
+						append_Path(PATH,FolderNames[folder_idx]);
+						// MP3 파일 검색
+						scanMp3FilesSFN(PATH);
+						cout<<"path:"<<PATH<<", num of Files:"<<fileCount<<"\r\n";
+						//std::cout<<"num of files:"<<num<<"\r\n";
+						if(fileCount>0)
+						{
+							f_chdir(PATH);
+							std::cout << "PATH:" << PATH << "Found " << fileCount << " MP3 files:\r" << std::endl;
+							for (uint16_t i = 0; i < fileCount; i++) {
+								std::cout << i + 1 << ": " << fileNames[i] << "\r" << std::endl;
+							}
+							numofFile=fileCount;
+							current_page = PLAY_PAGE;
+							is_playing = true;
+							reset_track = true;
+							Main_page();
+							event=EVENT_PAUSE;
+							osMessageQueuePut(buttonQueue, &event, 0, 0);
+						}
+						else
+						{
+							strcpy(PATH,"/");
+							lcd.color_screen_8(Black);
+							lcd.string(100,200,White,Black,"MP3 file not detected!");
+							osDelay(100);
+							FolderListPage(PATH);
+						}
+					}
+					else if (ulNotificationValue == EVENT_PREV)
+					{
+						lcd.Circle(15, LISTBOX_HEIGHT*(folder_idx+1), 7, Black, 1);
+						folder_idx=folder_idx==0? 0:folder_idx-1;
+						lcd.Circle(15, LISTBOX_HEIGHT*(folder_idx+1), 7, White, 1);
+					}
+					else if (ulNotificationValue == EVENT_NEXT)
+					{
+						lcd.Circle(15, LISTBOX_HEIGHT*(folder_idx+1), 7, Black, 1);
+						folder_idx=folder_idx==FolderCount? folder_idx:folder_idx+1;
+						lcd.Circle(15, LISTBOX_HEIGHT*(folder_idx+1), 7, White, 1);
+					}
+
+				}
+
 				else if(current_page == PLAY_PAGE)
 				{
 					if (ulNotificationValue == EVENT_REPEAT)
@@ -836,19 +891,26 @@ void StartControlTask(void *argument) {
 						music_no=0;
 						is_playing = false;
 						reset_track = true;
-						Home_page();
+						folder_idx=0;
+						event=EVENT_HOME;
+						osMessageQueuePut(buttonQueue, &event, 0, 0);
+						//Home_page();
 					}
 					if (ulNotificationValue == EVENT_PAUSE)
 					{ // pause/resume
-						is_playing = !is_playing;
+						cout<<"pause pressed\r\n";
+						event=EVENT_PAUSE;
+						osMessageQueuePut(buttonQueue, &event, 0, 0);
 
-						if(is_playing)
+						if(!is_playing)
 						{
+							is_playing=true;
 							lcd.string_size(10, 70, White, Background_gray, "Playing", 2, 2);
 							lcd.bitmap(play_emoji,110,370,100,100);
 						}
 						else
 						{
+							is_playing=false;
 							lcd.string_size(10, 70, White, Background_gray, "Pause  ", 2, 2);
 							lcd.bitmap(pause_emoji,110,370,100,100);
 						}
@@ -885,34 +947,37 @@ void StartAudioTask(void *argument) {
 	int i, n;
 	u_long k = 0, kd;
     FIL fil1;
-	init_page();
-	osSemaphoreAcquire(stateSemaphore, osWaitForever);
-	init=1;
-	osSemaphoreRelease(stateSemaphore);
-	vs.vs1003b_set_volume(200, 200);
-	sd.SPI_speed_6MHz();
-	FRESULT res;
+    char path[256]="/";
+    FRESULT res;
 	uint8_t button_event;
 	bool next = 0;
 	bool prev = 0;
 	bool vol_change=0;
-	bool playing=0;
+	volatile bool playing=0;
 	int music;
 	bool reset;
 	bool repeat;
 	uint8_t vol;
 	UINT bytesRead;       // 읽은 바이트 수
 	uint8_t buf[512];  // 데이터 버퍼 (섹터 크기 맞춤)
+	init_page();
+	Home_page();
+	osSemaphoreAcquire(stateSemaphore, osWaitForever);
+	init=1;
+	osSemaphoreRelease(stateSemaphore);
+	vs.vs1003b_set_volume(200, 200);
+	sd.SPI_speed_6MHz();
+
 
 	/* Infinite loop */
 	for (;;) {
 
 		osSemaphoreAcquire(stateSemaphore, osWaitForever);
-		playing = is_playing;
 		music = music_no;
 		reset = reset_track;
 		repeat = botton_repeat;
 		vol= volume;
+		strcpy(path,PATH);
 		osSemaphoreRelease(stateSemaphore);
 
 		next = 0;
@@ -928,6 +993,15 @@ void StartAudioTask(void *argument) {
 			{
 				vol_change=1;
 				cout<<"volume change:"<<(int)vol<<"\r"<<endl;
+			}
+			else if (button_event==EVENT_PAUSE)
+			{
+				playing=!playing;
+			}
+			else if (button_event==EVENT_HOME)
+			{
+				playing=0;
+				Home_page();
 			}
 		}
 
@@ -947,7 +1021,17 @@ void StartAudioTask(void *argument) {
 			c_clust=1;
 			bytesRead=0;
 			//f_close(&fil);
-			if (f_open(&fil, fileNames[0], FA_READ) != FR_OK) {
+//			osSemaphoreAcquire(stateSemaphore, osWaitForever);
+//			strcpy(path,PATH);
+//			osSemaphoreRelease(stateSemaphore);
+//			append_Path(path,fileNames[0]);
+
+			 if (f_open(&fil, fileNames[0], FA_READ) != FR_OK) {
+				f_mount(NULL,"",0);
+				f_mount(&fs,"",1);
+				osSemaphoreAcquire(stateSemaphore, osWaitForever);
+				f_chdir(PATH);
+				osSemaphoreRelease(stateSemaphore);
 				c_clust=0;
 				osSemaphoreAcquire(stateSemaphore, osWaitForever);
 				music_no = 1;
@@ -962,7 +1046,7 @@ void StartAudioTask(void *argument) {
 		}
 		//std::cout<<"playing:"<<playing<<", reset:"<<reset<<", music_no:"<<music<<", clust:"<<c_clust<<", k:"<<k<<", kd:"<<kd<<" vol:"<<(int)vol<<"\r"<<endl;
 
-		if (c_clust == 0 || next || prev) //end of music
+		if (playing &&(c_clust == 0 || next || prev)) //end of music
 		{
 			if (prev) {
 				if (music == 0) music = numofFile - 1;
@@ -980,9 +1064,10 @@ void StartAudioTask(void *argument) {
 			if (music >= numofFile)
 				music = 0;
 			osSemaphoreAcquire(stateSemaphore, osWaitForever);
+			std::cout<<"playing:"<<playing<<"is_playing:"<<is_playing<<" c_clust:"<<c_clust<<"\r\n";
 			music_no = music;
 			osSemaphoreRelease(stateSemaphore);
-			//std::cout<<"num of file:"<<numofFile<<"music:"<<music_no<<"\r\n";
+
 			k = 0;
 			kd = sd.file_len[music];                            // 파일 길이 섹터수
 			c_clust = sd.fileStartClust[music];               // f_no 파일 시작 클러스터
@@ -990,9 +1075,14 @@ void StartAudioTask(void *argument) {
 			c_clust=1;
 			if(f_close(&fil)!= FR_OK) std::cout<<"file close failed:\r"<<endl;
 			//f_close(&fil);
+//			append_Path(path,fileNames[music]);
+
 			if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
+				f_mount(NULL,"",0);
+				f_mount(&fs,"",1);
 				c_clust=0;
 				osSemaphoreAcquire(stateSemaphore, osWaitForever);
+				f_chdir(PATH);
 				music_no = music+1;
 				osSemaphoreRelease(stateSemaphore);
 				std::cout<<"file open failed: \r\n";
@@ -1013,12 +1103,15 @@ void StartAudioTask(void *argument) {
 				if(f_close(&fil)!= FR_OK) std::cout<<"file close failed:\r"<<endl;
 				f_mount(NULL,"",0);
 				f_mount(&fs,"",1);
+				osSemaphoreAcquire(stateSemaphore, osWaitForever);
+				f_chdir(PATH);
+				osSemaphoreRelease(stateSemaphore);
 				music = repeat ? music : music + 1;
 				if (music >= numofFile)	music = 0;
 				osSemaphoreAcquire(stateSemaphore, osWaitForever);
 				music_no = music;
 				osSemaphoreRelease(stateSemaphore);
-
+//				append_Path(PATH,fileNames[music]);
 				if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
 					c_clust=0;
 					osSemaphoreAcquire(stateSemaphore, osWaitForever);
@@ -1040,6 +1133,10 @@ void StartAudioTask(void *argument) {
 					f_close(&fil);
 					f_mount(NULL,"",0);
 					f_mount(&fs,"",1);
+					osSemaphoreAcquire(stateSemaphore, osWaitForever);
+					f_chdir(PATH);
+					osSemaphoreRelease(stateSemaphore);
+//					append_Path(PATH,fileNames[music]);
 					if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
 						std::cout<<"file open failed: \r\n"; }
 					f_lseek(&fil,pos);
@@ -1072,6 +1169,10 @@ void StartAudioTask(void *argument) {
 					f_close(&fil);
 					f_mount(NULL,"",0);
 					f_mount(&fs,"",1);
+					osSemaphoreAcquire(stateSemaphore, osWaitForever);
+					f_chdir(PATH);
+					osSemaphoreRelease(stateSemaphore);
+//
 					if (f_open(&fil, fileNames[music], FA_READ) != FR_OK) {
 						std::cout<<"file open failed: \r\n"; }
 					f_lseek(&fil,pos);

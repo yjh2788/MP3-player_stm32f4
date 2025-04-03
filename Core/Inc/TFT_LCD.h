@@ -21,7 +21,7 @@
 //#define TFTHEIGHT 320
 #define TFTLCD_DELAY 250
 #define CHAR_RETURN_LEN 300
-
+#define LISTBOX_HEIGHT 40
 
 #define TFT_RGB 0x08
 #define TFT_BGR 0x00

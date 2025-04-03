@@ -9,88 +9,122 @@
 #include "Encoding.h"
 #include <stdio.h>
 
-
-
 FATFS fs;           // File system object
 FIL fil;            // File object
 FILINFO fno;        // File information object
 DIR dir;            // Directory object
-TCHAR  fileNames[MAX_FILES][MAX_FILENAME];  // 파일 이름 저장 배열
+TCHAR fileNames[MAX_FILES][MAX_FILENAME];  // 파일 이름 저장 배열
+TCHAR FolderNames[MAX_FILES][MAX_FILENAME];
 volatile UINT fileCount = 0; // 파일 개수
 
+int ScanFolder(TCHAR *path) {
+	FRESULT res;
+	FILINFO finfo;
+	DIR dirr;
+	UINT FolderCount = 0;
+
+	res = f_opendir(&dirr, path);
+	if (res == FR_OK) {
+		while (1) {
+			// 디렉토리 내 파일 정보 읽기
+			res = f_readdir(&dirr, &finfo);
+			if (res != FR_OK || finfo.fname[0] == 0)
+				break; // 끝까지 읽었거나 오류 발생
+
+			if ((finfo.fattrib & AM_DIR)) {
+				if (FolderCount < MAX_FILES) {
+					wcscpy(FolderNames[FolderCount], finfo.fname); // save folder name
+					FolderCount++;
+				}
+			}
+		}
+		f_closedir(&dirr);
+	} else {
+		printf("Directory open failed!\n");
+	}
+	return FolderCount;
+}
+
+void append_Path(char* Path,const char* subdir)
+{
+	if (Path[strlen(Path) - 1] != '/') {
+	        strcat(Path, "/");
+	    }
+	//add subdirectory
+	strcat(Path, subdir);
+}
 
 void SkipID3v2(FIL *fil) {
-    UINT bytesRead;
-    uint8_t header[10];
+	UINT bytesRead;
+	uint8_t header[10];
 
-    // ID3v2 헤더 읽기 (10바이트)
-    f_read(fil, header, 10, &bytesRead);
-    if (bytesRead == 10 && memcmp(header, "ID3", 3) == 0) {
-        // ID3v2 크기 계산 (4바이트, 동기 안전 정수)
-        uint32_t size = ((header[6] & 0x7F) << 21) |
-                        ((header[7] & 0x7F) << 14) |
-                        ((header[8] & 0x7F) << 7) |
-                        (header[9] & 0x7F);
-        size += 10; // 헤더 크기 포함
+	// ID3v2 헤더 읽기 (10바이트)
+	f_read(fil, header, 10, &bytesRead);
+	if (bytesRead == 10 && memcmp(header, "ID3", 3) == 0) {
+		// ID3v2 크기 계산 (4바이트, 동기 안전 정수)
+		uint32_t size = ((header[6] & 0x7F) << 21) | ((header[7] & 0x7F) << 14)
+				| ((header[8] & 0x7F) << 7) | (header[9] & 0x7F);
+		size += 10; // 헤더 크기 포함
 
-        // ID3v2 건너뛰기
-        f_lseek(fil, size);
-        printf("ID3v2 size: %lu byte jump\n", size);
-    } else {
-        // ID3v2 없으면 처음으로 되돌리기
-        f_lseek(fil, 0);
-    }
+		// ID3v2 건너뛰기
+		f_lseek(fil, size);
+		printf("ID3v2 size: %lu byte jump\n", size);
+	} else {
+		// ID3v2 없으면 처음으로 되돌리기
+		f_lseek(fil, 0);
+	}
 }
 
 void FindFirstAudioFrame(FIL *fil) {
-    UINT bytesRead;
-    uint8_t buffer[512];
+	UINT bytesRead;
+	uint8_t buffer[512];
 
-    while (1) {
-        uint32_t pos = f_tell(fil);
-        f_read(fil, buffer, sizeof(buffer), &bytesRead);
-        if (bytesRead < 4) break; // 파일 끝
+	while (1) {
+		uint32_t pos = f_tell(fil);
+		f_read(fil, buffer, sizeof(buffer), &bytesRead);
+		if (bytesRead < 4)
+			break; // 파일 끝
 
-        for (UINT i = 0; i < bytesRead - 1; i++) {
-            if (buffer[i] == 0xFF && (buffer[i + 1] & 0xE0) == 0xE0) {
-                // MPEG 프레임 발견
-                f_lseek(fil, pos + i); // 프레임 시작으로 이동
-                printf("오디오 프레임 발견 at %lu\n", pos + i);
-                return;
-            }
-        }
-    }
+		for (UINT i = 0; i < bytesRead - 1; i++) {
+			if (buffer[i] == 0xFF && (buffer[i + 1] & 0xE0) == 0xE0) {
+				// MPEG 프레임 발견
+				f_lseek(fil, pos + i); // 프레임 시작으로 이동
+				printf("오디오 프레임 발견 at %lu\n", pos + i);
+				return;
+			}
+		}
+	}
 }
 
 void ReadMP3Audio(const char *filename) {
-    UINT bytesRead;
-    uint8_t buffer[512];
-    FRESULT res;
+	UINT bytesRead;
+	uint8_t buffer[512];
+	FRESULT res;
 
-    f_mount(&fs, "", 1);
-    if (f_open(&fil, filename, FA_READ) == FR_OK) {
-        // ID3v2 건너뛰기
-        SkipID3v2(&fil);
-        // 첫 오디오 프레임 찾기
-        FindFirstAudioFrame(&fil);
+	f_mount(&fs, "", 1);
+	if (f_open(&fil, filename, FA_READ) == FR_OK) {
+		// ID3v2 건너뛰기
+		SkipID3v2(&fil);
+		// 첫 오디오 프레임 찾기
+		FindFirstAudioFrame(&fil);
 
-        // 오디오 데이터 읽기
-        do {
-            res = f_read(&fil, buffer, sizeof(buffer), &bytesRead);
-            if (res != FR_OK) break;
+		// 오디오 데이터 읽기
+		do {
+			res = f_read(&fil, buffer, sizeof(buffer), &bytesRead);
+			if (res != FR_OK)
+				break;
 
-            // 오디오 데이터 처리 (예: 디코더로 전달)
-            for (UINT i = 0; i < bytesRead; i++) {
-                printf("%02X ", buffer[i]);
-            }
-            printf("\n");
-        } while (bytesRead > 0);
+			// 오디오 데이터 처리 (예: 디코더로 전달)
+			for (UINT i = 0; i < bytesRead; i++) {
+				printf("%02X ", buffer[i]);
+			}
+			printf("\n");
+		} while (bytesRead > 0);
 
-        f_close(&fil);
-    }
-    f_mount(NULL, "", 0);
+		f_close(&fil);
+	}
+	f_mount(NULL, "", 0);
 }
-
 
 void scanMp3Files(TCHAR *path) {
 	FRESULT res;
@@ -150,6 +184,39 @@ void scanMp3FilesSFN(TCHAR *path) {
 	}
 }
 
+void ScanFile(TCHAR *path, TCHAR* format,int l_filecount,char** l_filenames) {
+	FRESULT res;
+	FILINFO finfo;
+	DIR dirr;
+	UINT FolderCount = 0;
+
+	l_filecount = 0; // 파일 개수 초기화
+
+	// 디렉토리 열기
+	res = f_opendir(&dirr, path);
+	if (res == FR_OK) {
+		while (1) {
+			// 디렉토리 내 파일 정보 읽기
+			res = f_readdir(&dirr, &finfo);
+			if (res != FR_OK || finfo.fname[0] == 0)
+				break; // 끝까지 읽었거나 오류 발생
+
+			if (!(finfo.fattrib & AM_DIR)) { // 디렉토리가 아닌 경우
+				// 확장자가 MP3인지 확인
+				if (strstr(finfo.fname, format)) {
+					if (l_filecount < MAX_FILES) {
+						strcpy(l_filenames[l_filecount], finfo.fname); // 파일 이름 저장
+						l_filecount++;
+					}
+				}
+
+			}
+		}
+		f_closedir(&dir);
+	} else {
+		printf("Directory open failed!\n");
+	}
+}
 
 void printFileName(const TCHAR *fname) {
 	char utf8name[MAX_FILENAME];  // 출력할 UTF-8 문자열

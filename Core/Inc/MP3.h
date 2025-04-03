@@ -18,6 +18,7 @@
 
 #define MAX_FILES 50     // 최대 파일 개수
 #define MAX_FILENAME 100  // 최대 파일 이름 길이
+#define MAX_PATH_LEN 256
 
 enum Pages{
 	HOME_PAGE,
@@ -33,6 +34,10 @@ enum Pages{
 #define EVENT_PAUSE 5
 #define EVENT_NEXT 6
 #define EVENT_PREV 7
+
+int ScanFolder(TCHAR* path);
+void append_Path(char* Path, const char* subdir);
+void ScanFile(TCHAR* PATH,TCHAR* format,int l_filecount,char** l_filenames);
 
 void SkipID3v2(FIL *fil);
 void FindFirstAudioFrame(FIL *fil);

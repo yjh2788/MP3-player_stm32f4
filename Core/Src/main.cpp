@@ -371,9 +371,12 @@ void Home_page()
 void FolderListPage(TCHAR* PATH)
 {
 	lcd.color_screen_8(Black);
+	lcd.Rectangle(Rect(0, 0, TFTWIDTH-1, 30), 2, White);
+	lcd.frame();
 	FolderCount=ScanFolder(PATH);
 	if(FolderCount>0)
 	{
+		lcd.string_size(15, 5, White, Black, "Select a Folder", 1, 1);
 		for(int i=1;i<=FolderCount;i++)
 		{
 			lcd.string_size(30, LISTBOX_HEIGHT*i, White, Black, FolderNames[i-1], 1, 1);
@@ -382,7 +385,7 @@ void FolderListPage(TCHAR* PATH)
 	}
 	else
 	{
-		lcd.string_size(30, 200, White, Background_gray, "There is no Folders", 1, 1);
+		lcd.string_size(30, 200, White, Black, "There is no Folders", 1, 1);
 	}
 
 }
@@ -858,7 +861,7 @@ void StartControlTask(void *argument) {
 							strcpy(PATH,"/");
 							lcd.color_screen_8(Black);
 							lcd.string(100,200,White,Black,"MP3 file not detected!");
-							osDelay(100);
+							osDelay(200);
 							FolderListPage(PATH);
 						}
 					}
@@ -871,7 +874,7 @@ void StartControlTask(void *argument) {
 					else if (ulNotificationValue == EVENT_NEXT)
 					{
 						lcd.Circle(15, LISTBOX_HEIGHT*(folder_idx+1), 7, Black, 1);
-						folder_idx=folder_idx==FolderCount? folder_idx:folder_idx+1;
+						folder_idx=folder_idx==FolderCount-1? folder_idx:folder_idx+1;
 						lcd.Circle(15, LISTBOX_HEIGHT*(folder_idx+1), 7, White, 1);
 					}
 

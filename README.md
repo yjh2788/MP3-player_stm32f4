@@ -1,8 +1,5 @@
 # MP3 Player Upgrade with STM32 and FreeRTOS
 
-![PCB Schematic](PCB images/Schematic.jpg)
-![PCB Front](PCB images/PCB front.png)
-![PCB Back](PCB images/PCB Back.png)
 
 ## Introduction
 This project upgrades my previous MP3 player, originally built with an ATmega128, SD card module, and VS1003B module. For this enhanced version, I designed a custom PCB integrating all components and upgraded the CPU to an STM32F446RE for improved performance. Additionally, I implemented FreeRTOS to enable real-time functionality and better task management.
@@ -24,6 +21,13 @@ This project upgrades my previous MP3 player, originally built with an ATmega128
 - **FreeRTOS**: Real-time task scheduling.
 - **STM32 HAL**: Hardware abstraction layer.
 - **FatFS**: File system for SD card access.
+
+## Schematic
+![PCB Schematic](PCB%20images/Schematic.jpg)
+
+## Board design
+![PCB Front](PCB%20images/PCB%20front.png)
+![PCB Back](PCB%20images/PCB%20Back.png)
 
 ## Installation
 1. Install STM32CubeIDE.
